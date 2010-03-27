@@ -467,16 +467,19 @@ namespace KPEnhancedListview
             private void OnButtonClickNew(object sender, EventArgs e)
             {
                 string str = InputBox.Show("Add Column", "Add Column", "CustomColumn");
-                if (!this.lbInput.Items.Contains(str))
+                if (str != null)
                 {
-                    int i = this.lbInput.Items.Add(str);
-                    this.lbInput.ClearSelected();
-                    this.lbInput.SetSelected(i, true);
-                }
-                else
-                {
-                    this.lbInput.ClearSelected();
-                    this.lbInput.SetSelected(this.lbInput.Items.IndexOf(str), true);
+                    if (!this.lbInput.Items.Contains(str))
+                    {
+                        int i = this.lbInput.Items.Add(str);
+                        this.lbInput.ClearSelected();
+                        this.lbInput.SetSelected(i, true);
+                    }
+                    else
+                    {
+                        this.lbInput.ClearSelected();
+                        this.lbInput.SetSelected(this.lbInput.Items.IndexOf(str), true);
+                    }
                 }
             }
         }
