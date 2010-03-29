@@ -258,22 +258,22 @@ namespace KPEnhancedListview
         }
 #endif
 
-        public void _tb_KeyPress(object sender, KeyPressEventArgs e)
+        private void _tb_KeyPress(object sender, KeyPressEventArgs e)
         {
             this.OnKeyPress(e);
         }
 
-        public void _tb_Leave(object sender, EventArgs e)
+        private void _tb_Leave(object sender, EventArgs e)
         {
             this.OnLeave(e);
         }
 
-        public void _tb_LostFocus(object sender, EventArgs e)
+        private void _tb_LostFocus(object sender, EventArgs e)
         {
             this.OnLostFocus(e);
         }
 
-        public void _tb_MouseCaptureChanged(object sender, EventArgs e)
+        private void _tb_MouseCaptureChanged(object sender, EventArgs e)
         {
             this.OnMouseCaptureChanged(e);
         }
