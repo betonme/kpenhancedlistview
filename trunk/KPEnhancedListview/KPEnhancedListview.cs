@@ -45,6 +45,7 @@ using KeePass.Util;
 using KeePass.Resources;
 
 using KeePassLib;
+using KeePassLib.Cryptography.PasswordGenerator;
 using KeePassLib.Security;
 using KeePassLib.Utility;
 
@@ -82,10 +83,11 @@ namespace KPEnhancedListview
 
         private List<ColumnHeader> m_lCustomColums = null;
 
-        // Mouse handler helper
+        // Mouse handler helper for detecting InlineEditing and AddEntry
         private const int m_mouseTimeMin = 3000000;
         private const int m_mouseTimeMax = 10000000;
-        private DateTime m_mouseDownAt = DateTime.MinValue;
+        private DateTime m_mouseDownForIeAt = DateTime.MinValue;
+        private DateTime m_mouseDownForAeAt = DateTime.MinValue;
         private ListViewItem m_previousClickedListViewItem = null;
 
         // ListView send messages
@@ -104,26 +106,6 @@ namespace KPEnhancedListview
         // ListView messages
         private const int LVM_FIRST = 0x1000;
         private const int LVM_GETCOLUMNORDERARRAY = (LVM_FIRST + 59);
-
-        //TODO
-        [Serializable, StructLayout(LayoutKind.Sequential)]
-        public struct RECT
-        {
-            public int Left;
-            public int Top;
-            public int Right;
-            public int Bottom;
-        }
-
-        private const long LVM_GETHEADER = (LVM_FIRST + 31);
-
-        [DllImport("user32.dll", EntryPoint = "SendMessage")]
-        private static extern IntPtr SendMessage(IntPtr hwnd, long wMsg, long wParam, long lParam);
-
-        [DllImport("user32.dll")]
-        private static extern bool GetWindowRect(HandleRef hwnd, out RECT lpRect);
-        //END
-
 
         // InlineEditing control
         private PaddedTextBox m_textBoxComment;
@@ -208,21 +190,6 @@ namespace KPEnhancedListview
 
             m_clveEntries.Controls.Add(m_textBoxComment);    // Add control to listview
 
-
-            //TODO
-            /*
-            RECT rc = new RECT();
-            IntPtr hwnd = SendMessage(m_clveEntries.Handle, LVM_GETHEADER, 0, 0);
-            if (hwnd != null)
-            {
-                if (GetWindowRect(new HandleRef(null, hwnd), out rc))
-                {
-                    headerHeight = rc.Bottom - rc.Top;
-                }
-            }*/
-
-
-
             // Initialize Custom columns
             m_lCustomColums = new List<ColumnHeader>();
 
@@ -232,13 +199,17 @@ namespace KPEnhancedListview
             m_clveEntries.ColumnWidthChanging += new ColumnWidthChangingEventHandler(this.OnPwListCustomColumnWidthChanging);
             m_clveEntries.ColumnWidthChanged += new ColumnWidthChangedEventHandler(this.OnPwListCustomColumnWidthChanged);
 
-            //TODO sorting is not working after leaving pwentry form
-            //m_evEntries.Suppress("OnPwListColumnClick");
+//TODO sorting is not working after leaving pwentry form
+m_evEntries.Suppress("OnPwListColumnClick");
             m_clveEntries.ColumnClick += new ColumnClickEventHandler(this.OnPwListCustomColumnClick);
             //m_evEntries.Resume("OnPwListColumnClick");
             m_host.MainWindow.UIStateUpdated += new EventHandler(this.OnPwListCustomColumnUpdate);
 
             m_clveEntries.MouseDoubleClick += new MouseEventHandler(this.OnItemDoubleClick);
+
+            // Initialize add new entry on double click function
+//TODO add tools menu option
+            m_clveEntries.MouseUp += new MouseEventHandler(this.OnMouseUp);
 
             // Tell windows we are interested in drawing items in ListBox on our own
             m_clveEntries.OwnerDraw = true;
@@ -247,30 +218,6 @@ namespace KPEnhancedListview
             m_clveEntries.DrawColumnHeader += new DrawListViewColumnHeaderEventHandler(this.DrawColumnHeaderHandler);
 
             return true; // Initialization successful
-        }
-
-        /// <summary>
-        /// Finds a Control recursively. Note finds the first match and exists
-        /// </summary>
-        /// <param name="container">The container to search for the control passed. Remember
-        /// all controls (Panel, GroupBox, Form, etc are all containsers for controls
-        /// </param>
-        /// <param name="name">Name of the control to look for</param>
-        /// <returns>The Control we found</returns>
-        public Control FindControlRecursive(Control container, string name)
-        {
-            if (container.Name == name)
-                return container;
-
-            foreach (Control ctrl in container.Controls)
-            {
-                Control foundCtrl = FindControlRecursive(ctrl, name);
-                if (foundCtrl != null)
-                {
-                    return foundCtrl;
-                }
-            }
-            return null;
         }
 
         private void OnFileSaved(object sender, FileSavedEventArgs e)
@@ -310,6 +257,8 @@ namespace KPEnhancedListview
 
             m_clveEntries.MouseDoubleClick -= new MouseEventHandler(this.OnItemDoubleClick);
 
+            m_clveEntries.MouseUp -= new MouseEventHandler(this.OnMouseUp);
+
             m_clveEntries.DrawItem -= new DrawListViewItemEventHandler(this.DrawItemHandler);
             m_clveEntries.DrawSubItem -= new DrawListViewSubItemEventHandler(this.DrawSubItemHandler);
             m_clveEntries.DrawColumnHeader -= new DrawListViewColumnHeaderEventHandler(this.DrawColumnHeaderHandler);
@@ -337,9 +286,34 @@ namespace KPEnhancedListview
             m_ctseToolMain.ItemClicked -= new ToolStripItemClickedEventHandler(this.OnItemCancel);
         }
 
+        /// <summary>
+        /// Finds a Control recursively. Note finds the first match and exists
+        /// </summary>
+        /// <param name="container">The container to search for the control passed. Remember
+        /// all controls (Panel, GroupBox, Form, etc are all containsers for controls
+        /// </param>
+        /// <param name="name">Name of the control to look for</param>
+        /// <returns>The Control we found</returns>
+        private Control FindControlRecursive(Control container, string name)
+        {
+            if (container.Name == name)
+                return container;
+
+            foreach (Control ctrl in container.Controls)
+            {
+                Control foundCtrl = FindControlRecursive(ctrl, name);
+                if (foundCtrl != null)
+                {
+                    return foundCtrl;
+                }
+            }
+            return null;
+        }
+
         private void DrawItemHandler(object sender, DrawListViewItemEventArgs e)
         {
             // CustomColumns
+            // Should be not necessary only to avoid issues
             //TODO combine all additem algorithm to one function
             foreach (ColumnHeader chd in m_lCustomColums)
             {
@@ -369,15 +343,7 @@ namespace KPEnhancedListview
             // Inline Editing
             if (_editingControl != null)
             {
-                // TODO is ther an alternative
-                //if(e.Item.Tag.Equals(_editItem.Tag))
-                // Check if item is visible - below ColumnHeader
-                //if (m_clveEntries.TopItem.Bounds.Top <= m_clveEntries.Items[_editItem.Index].Bounds.Top)
-                //if (m_clveEntries.PointToClient(new Point(0, headerHeight)).Y <= m_clveEntries.Items[_editItem.Index].Bounds.Top)
-                //if ( ( m_clveEntries.TopItem.Bounds.Top <= m_clveEntries.Items[_editItem.Index].Bounds.Top ) && ( m_clveEntries.PointToClient(new Point(0, headerHeight)).Y <= m_clveEntries.Items[_editItem.Index].Bounds.Top ) )
-                //Point pt = new Point(0, m_clveEntries.ClientRectangle.Top); pt.Y += headerHeight;
-                //if (m_clveEntries.PointToClient(pt).Y <= m_clveEntries.Items[_editItem.Index].Bounds.Top)
-                //if ((e.Bounds.Top+headerHeight) <= m_clveEntries.Items[_editItem.Index].Bounds.Top)               
+                // Check if item is visible - below ColumnHeader     
                 if (m_headerBottom <= m_clveEntries.Items[_editItem.Index].Bounds.Top)
                 {
                     //_editingControl.Text = m_clveEntries.TopItem.Bounds.Top.ToString();
@@ -402,7 +368,6 @@ namespace KPEnhancedListview
 
         private void DrawColumnHeaderHandler(object sender, DrawListViewColumnHeaderEventArgs e)
         {
-            //headerHeight = e.Header.Height;
             m_headerBottom = e.Bounds.Bottom;
 
             e.DrawDefault = true;
@@ -488,23 +453,29 @@ namespace KPEnhancedListview
 
         private void OnItemMouseUp(object sender, MouseEventArgs e)
         {
-            ListViewItem item;
-            int idx = GetSubItemAt(e.X, e.Y, out item);
-            if (item != null)
+            // Only allow left mouse button
+            if (e.Button == MouseButtons.Left)
             {
-                if ((m_previousClickedListViewItem != null) && (item == m_previousClickedListViewItem) && (e.Button == MouseButtons.Left))
+                ListViewItem item;
+                int idx = GetSubItemAt(e.X, e.Y, out item);
+                if (item != null)
                 {
-                    long datNow = DateTime.Now.Ticks;
-                    long datMouseDown = m_mouseDownAt.Ticks;
-                    if ((datNow - datMouseDown > m_mouseTimeMin) && (datNow - datMouseDown < m_mouseTimeMax))
+                    if ((m_previousClickedListViewItem != null) && (item == m_previousClickedListViewItem))
                     {
-                        Point pt = m_clveEntries.PointToClient(Cursor.Position);
-                        EditSubitemAt(pt);
+                        long datNow = DateTime.Now.Ticks;
+                        long datMouseDown = m_mouseDownForIeAt.Ticks;
+
+                        // Slow double clicking with the left moaus button
+                        if ((datNow - datMouseDown > m_mouseTimeMin) && (datNow - datMouseDown < m_mouseTimeMax))
+                        {
+                            Point pt = m_clveEntries.PointToClient(Cursor.Position);
+                            EditSubitemAt(pt);
+                        }
                     }
+                    m_mouseDownForIeAt = DateTime.Now;
                 }
-                m_mouseDownAt = DateTime.Now;
+                m_previousClickedListViewItem = item;
             }
-            m_previousClickedListViewItem = item;
         }
 
         private void OnItemCancel(object sender, EventArgs e)
@@ -518,15 +489,67 @@ namespace KPEnhancedListview
 
         private void OnItemDoubleClick(object sender, MouseEventArgs e)
         {
-            ListViewItem item;
-            int subitem = GetSubItemAt(e.X, e.Y, out item);
-
-            if (subitem > (int)AppDefs.ColumnId.Uuid)
+            // KeePass does not differ between mouse buttons
+            //if (e.Button == MouseButtons.Left)
             {
-                // Copy CustomColumn subitem text to clipboard
-                bool bCnt = ClipboardUtil.CopyAndMinimize(item.SubItems[subitem].Text, false, m_host.MainWindow, null, null);
-                if (bCnt) m_host.MainWindow.StartClipboardCountdown();
+                ListViewItem item;
+                int subitem = GetSubItemAt(e.X, e.Y, out item);
+
+                if (subitem > (int)AppDefs.ColumnId.Uuid)
+                {
+                    // Copy CustomColumn subitem text to clipboard
+                    bool bCnt = ClipboardUtil.CopyAndMinimize(item.SubItems[subitem].Text, false, m_host.MainWindow, null, null);
+                    if (bCnt) m_host.MainWindow.StartClipboardCountdown();
+                }
             }
+        }
+
+        private void OnMouseUp(object sender, MouseEventArgs e)
+        {
+            // Only allow left mouse button
+            if (e.Button == MouseButtons.Left)
+            {
+                ListViewItem item;
+                int idx = GetSubItemAt(e.X, e.Y, out item);
+                if (idx == -1)
+                {
+                    // No item was clicked
+                    long datNow = DateTime.Now.Ticks;
+                    long datMouseDown = m_mouseDownForAeAt.Ticks;
+
+                    // Fast double clicking with the left moaus button
+                    if (datNow - datMouseDown < m_mouseTimeMin)
+                    {
+                        // KeePass has no define or constant for the add entry keystroke
+                        SendKeys.Send("{INSERT}");
+                    }
+                    m_mouseDownForAeAt = DateTime.Now;
+                }
+            }
+        }
+
+        // Adapted from KeePass
+        private void EnsureVisibleEntry(PwUuid uuid)
+        {
+            ListViewItem lvi = GuiFindEntry(uuid);
+            if (lvi == null) { Debug.Assert(false); return; }
+
+            m_clveEntries.EnsureVisible(lvi.Index);
+        }
+        
+        // Adapted from KeePass
+        private ListViewItem GuiFindEntry(PwUuid puSearch)
+        {
+            Debug.Assert(puSearch != null);
+            if (puSearch == null) return null;
+
+            foreach (ListViewItem lvi in m_clveEntries.Items)
+            {
+                if (((PwEntry)lvi.Tag).Uuid.EqualsValue(puSearch))
+                    return lvi;
+            }
+
+            return null;
         }
 
         ///<summary>
@@ -578,7 +601,7 @@ namespace KPEnhancedListview
         /// <param name="y">relative to ListView</param>
         /// <param name="item">Item at position (x,y)</param>
         /// <returns>SubItem index</returns>
-        public int GetSubItemAt(int x, int y, out ListViewItem item)
+        private int GetSubItemAt(int x, int y, out ListViewItem item)
         {
             item = m_clveEntries.GetItemAt(x, y);
 
@@ -609,7 +632,7 @@ namespace KPEnhancedListview
         /// </summary>
         /// <param name="SubItem">SubItem to find next for</param>
         /// <returns>SubItem index</returns>
-        public int GetNextSubItemFor(int SubItem)
+        private int GetNextSubItemFor(int SubItem)
         {
             int[] order = GetColumnOrder();
 
@@ -639,7 +662,7 @@ namespace KPEnhancedListview
         /// Retrieve the order in which columns appear
         /// </summary>
         /// <returns>Current display order of column indices</returns>
-        public int[] GetColumnOrder()
+        private int[] GetColumnOrder()
         {
             IntPtr lPar = Marshal.AllocHGlobal(Marshal.SizeOf(typeof(int)) * m_clveEntries.Columns.Count);
 
@@ -663,7 +686,7 @@ namespace KPEnhancedListview
         /// <param name="Item">Target ListViewItem</param>
         /// <param name="SubItem">Target SubItem index</param>
         /// <returns>Bounds of SubItem (relative to ListView)</returns>
-        public Rectangle GetSubItemBounds(ListViewItem Item, int SubItem)
+        private Rectangle GetSubItemBounds(ListViewItem Item, int SubItem)
         {
             int[] order = GetColumnOrder();
 
@@ -724,7 +747,7 @@ namespace KPEnhancedListview
         /// <param name="c">Control used as cell editor</param>
         /// <param name="Item">ListViewItem to edit</param>
         /// <param name="SubItem">SubItem index to edit</param>
-        public void StartEditing(PaddedTextBox c, ListViewItem Item, int SubItem)
+        private void StartEditing(PaddedTextBox c, ListViewItem Item, int SubItem)
         {
             mutEdit.WaitOne();
 
@@ -943,13 +966,13 @@ namespace KPEnhancedListview
             return str;
         }
 
-        public void _editControl_Leave(object sender, EventArgs e)
+        private void _editControl_Leave(object sender, EventArgs e)
         {
             // input edit leaves cell editor focus
             // not necessary - see _editControl_LostFocus
         }
 
-        public void _editControl_LostFocus(object sender, EventArgs e)
+        private void _editControl_LostFocus(object sender, EventArgs e)
         {
             // cell editor losing focus
             if (m_clveEntries.Focused)
@@ -964,7 +987,7 @@ namespace KPEnhancedListview
             }
         }
 
-        public void _editControl_KeyPress(object sender, System.Windows.Forms.KeyPressEventArgs e)
+        private void _editControl_KeyPress(object sender, System.Windows.Forms.KeyPressEventArgs e)
         {
             switch (e.KeyChar)
             {
@@ -1036,7 +1059,7 @@ namespace KPEnhancedListview
         /// Accept or discard current value of cell editor control
         /// </summary>
         /// <param name="AcceptChanges">Use the _editingControl's Text as new SubItem text or discard changes?</param>
-        public void EndEditing(bool AcceptChanges)
+        private void EndEditing(bool AcceptChanges)
         {
             mutEdit.WaitOne();
 
@@ -1238,7 +1261,8 @@ namespace KPEnhancedListview
                 {
                     if (!strl.Contains(pstr.Key))
                     {
-                        if (!Enum.IsDefined(typeof(AppDefs.ColumnId), pstr.Key))
+                        //if (!Enum.IsDefined(typeof(AppDefs.ColumnId), pstr.Key))
+                        if (!PwDefs.IsStandardField(pstr.Key))
                         {
                             strl.Add(pstr.Key);
                         }
@@ -1251,6 +1275,8 @@ namespace KPEnhancedListview
             {
                 strl.Remove(ch.Text);
             }
+
+            strl.Sort();
 
             string[] strs = InputComboBox.Show(strl.ToArray(), "Add CustomColumn with name:", "Add CustomColumn");
 
@@ -1318,7 +1344,11 @@ namespace KPEnhancedListview
                 return;
             }
 
-            string[] strs = m_lCustomColums.ConvertAll<string>(ch => ch.Text).ToArray();
+            List<string> strl = new List<string>();
+            strl.AddRange(m_lCustomColums.ConvertAll<string>(ch => ch.Text));
+            strl.Sort();
+            string[] strs = strl.ToArray(); 
+
             strs = InputListBox.Show(strs, "Remove CustomColumn with name:", "Remove CustomColumn");
 
             if (strs != null)
@@ -1347,6 +1377,34 @@ namespace KPEnhancedListview
         // Check if a CustomColumn width is changing
         private void OnPwListCustomColumnWidthChanging(object sender, ColumnWidthChangingEventArgs e)
         {
+//TODO NET 3.0
+            //m_clveEntries.ColumnWidthChanging()
+            //System.Workflow.Activities.RaiseEvent(
+            //m_clveEntries.ra
+            //m_host.MainWindow.Controls[0].rai
+            /*
+            control.Dispatcher.Invoke(DispatcherPriority.Normal, delegate() 
+            {
+              control.RaiseEvent(newEvent);
+            });
+
+            Should be this:
+
+            control.Dispatcher.Invoke(DispatcherPriority.Normal, new DispatcherOperationCallback(delegate(object) 
+            {
+              control.RaiseEvent(newEvent);
+
+              return null;
+            }), null);
+            */
+            
+            /*
+            m_evEntries.Resume("OnPwListColumnWidthChanging");
+            //TODO SendMessage 
+            m_clveEntries.ColumnWidthChanging(
+            m_evEntries.Suppress("OnPwListColumnWidthChanging");
+            */
+
             // Native KeePass OnPwListColumnWidthChanging Event is always suppressed
             // Reimplement KeePass OnPwListColumnWidthChanging EventHandler
             if (m_clveEntries.Columns[e.ColumnIndex].Width == 0)
@@ -1380,6 +1438,59 @@ namespace KPEnhancedListview
             //Reimplement Listsort function
             //and supress keepass sort fct
             //m_clveEntries.Columns[e.Column].ListView.Sort();
+
+            //SortPasswordList(true, e.Column, true);
+        }
+
+		private ListSorter m_pListSorter = Program.Config.MainWindow.ListSorting;
+        private void SortPasswordList(bool bEnableSorting, int nColumn, bool bUpdateEntryList)
+        {
+            if (bEnableSorting)
+            {
+                bool bSortTimes = ((nColumn >= (int)AppDefs.ColumnId.CreationTime) &&
+                    (nColumn <= (int)AppDefs.ColumnId.ExpiryTime));
+                bool bSortNaturally = (nColumn != (int)AppDefs.ColumnId.Uuid);
+
+                int nOldColumn = m_pListSorter.Column;
+                SortOrder sortOrder = m_pListSorter.Order;
+
+                if (nColumn == nOldColumn)
+                {
+                    if (sortOrder == SortOrder.None)
+                        sortOrder = SortOrder.Ascending;
+                    else if (sortOrder == SortOrder.Ascending)
+                        sortOrder = SortOrder.Descending;
+                    else if (sortOrder == SortOrder.Descending)
+                        sortOrder = SortOrder.None;
+                    else { Debug.Assert(false); }
+                }
+                else sortOrder = SortOrder.Ascending;
+
+                if (sortOrder != SortOrder.None)
+                {
+                    m_pListSorter = new ListSorter(nColumn, sortOrder,
+                        bSortNaturally, bSortTimes);
+                    m_clveEntries.ListViewItemSorter = m_pListSorter;
+                }
+                else
+                {
+                    m_pListSorter = new ListSorter();
+                    m_clveEntries.ListViewItemSorter = null;
+
+                    //if (bUpdateEntryList) UpdateEntryList(null, true);
+                }
+            }
+            else // Disable sorting
+            {
+                m_pListSorter = new ListSorter();
+                m_clveEntries.ListViewItemSorter = null;
+
+                //if (bUpdateEntryList) UpdateEntryList(null, true);
+            }
+
+            //UpdateColumnSortingIcons();
+            //UIUtil.SetAlternatingBgColors(m_lvEntries, m_clrAlternateItemBgColor,
+            //    Program.Config.MainWindow.EntryListAlternatingBgColors);
         }
 
         // Check after UIStateUpdated if all CustomColums SubItems are available

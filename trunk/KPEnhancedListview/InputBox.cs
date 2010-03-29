@@ -466,7 +466,7 @@ namespace KPEnhancedListview
             
             private void OnButtonClickNew(object sender, EventArgs e)
             {
-                string str = InputBox.Show("Add Column", "Add Column", "CustomColumn");
+                string str = InputBox.Show("Add new column", "Add new column", "CustomColumn");
                 if (str != null)
                 {
                     if (!this.lbInput.Items.Contains(str))
