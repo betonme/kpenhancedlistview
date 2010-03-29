@@ -314,31 +314,7 @@ m_evEntries.Suppress("OnPwListColumnClick");
         {
             // CustomColumns
             // Should be not necessary only to avoid issues
-            //TODO combine all additem algorithm to one function
-            foreach (ColumnHeader chd in m_lCustomColums)
-            {
-                int i = chd.Index;
-                string str = chd.Text;
-
-                // Check subitems
-                if (e.Item.SubItems.Count > i)
-                {
-                    break;
-                }
-                else
-                {
-                    PwEntry pe = (PwEntry)e.Item.Tag;
-                    if (pe.Strings.Exists(str))
-                    {
-                        string sit = pe.Strings.Get(str).ReadString();
-                        e.Item.SubItems.Add((new ListViewItem.ListViewSubItem()).Text = sit);
-                    }
-                    else
-                    {
-                        e.Item.SubItems.Add((new ListViewItem.ListViewSubItem()).Text = "");
-                    }
-                }
-            }
+            UpdateListview();
 
             // Inline Editing
             if (_editingControl != null)
@@ -1365,7 +1341,10 @@ m_evEntries.Suppress("OnPwListColumnClick");
                         m_clveEntries.BeginUpdate();
                         foreach (ListViewItem lvi in m_clveEntries.Items)
                         {
-                            lvi.SubItems.RemoveAt(i);
+                            if (lvi.SubItems.Count >= i)
+                            {
+                                lvi.SubItems.RemoveAt(i);
+                            }
                         }
                         m_clveEntries.EndUpdate();
                         m_clveEntries.Update();
@@ -1442,7 +1421,122 @@ m_evEntries.Suppress("OnPwListColumnClick");
             //SortPasswordList(true, e.Column, true);
         }
 
-		private ListSorter m_pListSorter = Program.Config.MainWindow.ListSorting;
+        // Check after UIStateUpdated if all CustomColums SubItems are available
+        private void OnPwListCustomColumnUpdate(object sender, EventArgs e)
+        {
+            UpdateListview();
+        }
+
+        private bool UpdateListview()
+        {
+            /*
+            foreach (ColumnHeader chd in m_lCustomColums)
+            {
+                int i = chd.Index;
+                string str = chd.Text;
+
+                // Check subitems
+                if (e.Item.SubItems.Count > i)
+                {
+                    break;
+                }
+                else
+                {
+                    PwEntry pe = (PwEntry)e.Item.Tag;
+                    if (pe.Strings.Exists(str))
+                    {
+                        string sit = pe.Strings.Get(str).ReadString();
+                        e.Item.SubItems.Add((new ListViewItem.ListViewSubItem()).Text = sit);
+                    }
+                    else
+                    {
+                        e.Item.SubItems.Add((new ListViewItem.ListViewSubItem()).Text = "");
+                    }
+                }
+            }
+            */
+
+            bool upd = false;
+
+            // Check custom columns
+            foreach (ColumnHeader chd in m_lCustomColums)
+            {
+                int i = chd.Index;
+                string str = chd.Text;
+
+                // Check subitems
+                foreach (ListViewItem lvi in m_clveEntries.Items)
+                {
+                    if (lvi.SubItems.Count > i)
+                    {
+                        break;
+                    }
+                    else
+                    {
+                        if (!upd)
+                        {
+                            upd = true;
+                            m_clveEntries.BeginUpdate();
+                        }
+
+                        PwEntry pe = (PwEntry)lvi.Tag;
+                        if (pe.Strings.Exists(str))
+                        {
+                            string sit = pe.Strings.Get(str).ReadString();
+                            lvi.SubItems.Add((new ListViewItem.ListViewSubItem()).Text = StringNormalizeToOneLine(sit, chd.Index));
+                        }
+                        else
+                        {
+                            lvi.SubItems.Add((new ListViewItem.ListViewSubItem()).Text = "");
+                        }
+                    }
+                }
+            }
+
+            //TODO sort list
+            /*
+            foreach (ColumnHeader chd in m_clveEntries.Columns)
+            {
+                if (chd.ListView.Sorting != SortOrder.None)
+                {
+                    m_clveEntries.ListViewItemSorter = new ListSorter(0, chd.ListView.Sorting, true, false);
+                    chd.ListView.Sort();
+
+                    m_clveEntries.ListViewItemSorter = new ListSorter(chd.Index, chd.ListView.Sorting, true, false);
+                    chd.ListView.Sort();
+
+                    break;
+                }
+            }
+            */
+
+            /*
+            foreach (ColumnHeader chd in m_lCustomColums)
+            {
+                if (chd.ListView.Sorting != SortOrder.None)
+                {
+                    chd.ListView.Sort();
+                    m_clveEntries.Update();
+                    break;
+                }
+            }*/
+
+            /*
+                m_pListSorter = new ListSorter(nColumn, sortOrder,
+                    bSortNaturally, bSortTimes);
+                m_lvEntries.ListViewItemSorter = m_pListSorter;
+             */
+
+            if (upd)
+            {
+                m_clveEntries.EndUpdate();
+                m_clveEntries.Update();
+            }
+
+            return upd;
+        }
+
+        private ListSorter m_pListSorter = Program.Config.MainWindow.ListSorting;
         private void SortPasswordList(bool bEnableSorting, int nColumn, bool bUpdateEntryList)
         {
             if (bEnableSorting)
@@ -1491,87 +1585,6 @@ m_evEntries.Suppress("OnPwListColumnClick");
             //UpdateColumnSortingIcons();
             //UIUtil.SetAlternatingBgColors(m_lvEntries, m_clrAlternateItemBgColor,
             //    Program.Config.MainWindow.EntryListAlternatingBgColors);
-        }
-
-        // Check after UIStateUpdated if all CustomColums SubItems are available
-        private void OnPwListCustomColumnUpdate(object sender, EventArgs e)
-        {
-            bool upd = false;
-
-            // Check custom columns
-            foreach (ColumnHeader chd in m_lCustomColums)
-            {
-                int i = chd.Index;
-                string str = chd.Text;
-
-                //TODO make one function add subitems
-                // Check subitems
-                foreach (ListViewItem lvi in m_clveEntries.Items)
-                {
-                    if (lvi.SubItems.Count > i)
-                    {
-                        break;
-                    }
-                    else
-                    {
-                        if (!upd)
-                        {
-                            upd = true;
-                            m_clveEntries.BeginUpdate();
-                        }
-
-                        PwEntry pe = (PwEntry)lvi.Tag;
-                        if (pe.Strings.Exists(str))
-                        {
-                            string sit = pe.Strings.Get(str).ReadString();
-                            lvi.SubItems.Add((new ListViewItem.ListViewSubItem()).Text = StringNormalizeToOneLine(sit, chd.Index));
-                        }
-                        else
-                        {
-                            lvi.SubItems.Add((new ListViewItem.ListViewSubItem()).Text = "");
-                        }
-                    }
-                }
-            }
-            if (upd)
-            {
-                m_clveEntries.EndUpdate();
-                m_clveEntries.Update();
-
-                //TODO sort list
-                /*
-                foreach (ColumnHeader chd in m_clveEntries.Columns)
-                {
-                    if (chd.ListView.Sorting != SortOrder.None)
-                    {
-                        m_clveEntries.ListViewItemSorter = new ListSorter(0, chd.ListView.Sorting, true, false);
-                        chd.ListView.Sort();
-
-                        m_clveEntries.ListViewItemSorter = new ListSorter(chd.Index, chd.ListView.Sorting, true, false);
-                        chd.ListView.Sort();
-
-                        break;
-                    }
-                }
-                */
-
-                /*
-                foreach (ColumnHeader chd in m_lCustomColums)
-                {
-                    if (chd.ListView.Sorting != SortOrder.None)
-                    {
-                        chd.ListView.Sort();
-                        m_clveEntries.Update();
-                        break;
-                    }
-                }*/
-
-                /*
-                    m_pListSorter = new ListSorter(nColumn, sortOrder,
-						bSortNaturally, bSortTimes);
-					m_lvEntries.ListViewItemSorter = m_pListSorter;
-                 */
-            }
         }
     }
 }
