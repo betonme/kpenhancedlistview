@@ -26,7 +26,7 @@
     <DebugSymbols>true</DebugSymbols>
     <DebugType>full</DebugType>
     <Optimize>false</Optimize>
-    <OutputPath>..\..\Build\SamplePlugin\Debug\</OutputPath>
+    <OutputPath>Build\Debug\</OutputPath>
     <DefineConstants>TRACE;DEBUG;USE_RTB USE_NET20</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
@@ -51,7 +51,11 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="AddEntry.cs" />
     <Compile Include="EventSuppressor.cs" />
+    <Compile Include="InlineEditing.cs" />
+    <Compile Include="CustomColumns.cs" />
+    <Compile Include="Util.cs" />
     <Compile Include="PaddedTextbox.cs">
       <SubType>UserControl</SubType>
     </Compile>
