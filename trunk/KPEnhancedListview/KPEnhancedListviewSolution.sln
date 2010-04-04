@@ -2,9 +2,6 @@
 Microsoft Visual Studio Solution File, Format Version 10.00
 # Visual C# Express 2008
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "KPEnhancedListview", "KPEnhancedListview.csproj", "{4C1BB6F8-D2CD-49C2-9053-21705681356C}"
-	ProjectSection(ProjectDependencies) = postProject
-		{10938016-DEE2-4A25-9A5A-8FD3444379CA} = {10938016-DEE2-4A25-9A5A-8FD3444379CA}
-	EndProjectSection
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "KeePass", "..\KeePass-Source\KeePass\KeePass.csproj", "{10938016-DEE2-4A25-9A5A-8FD3444379CA}"
 EndProject

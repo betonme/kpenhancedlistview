@@ -1,0 +1,87 @@
+﻿using System;
+using System.Text;
+using System.Diagnostics;
+using System.Windows;
+using System.Windows.Forms;
+using System.Collections;
+using System.Collections.Generic;
+using System.ComponentModel;
+using System.Drawing;
+using System.Data;
+using System.Reflection;
+using System.Runtime.InteropServices;
+using System.Threading;
+using System.Timers;
+
+namespace KPEnhancedListview
+{
+    partial class KPEnhancedListviewExt
+    {
+        private DateTime m_mouseDownForAeAt = DateTime.MinValue;
+
+        private void InitializeAddEntry()
+        {
+            // Nothing todo
+        }
+
+        public void TerminateAddEntry()
+        {
+            RemoveHandlerAddEntry();
+        }
+
+        private void AddHandlerAddEntry()
+        {
+            m_clveEntries.MouseUp += new MouseEventHandler(this.OnMouseUp);
+        }
+
+        private void RemoveHandlerAddEntry()
+        {
+            m_clveEntries.MouseUp -= new MouseEventHandler(this.OnMouseUp);
+        }
+
+        private void OnMenuAddEntry(object sender, EventArgs e)
+        {
+            if (!m_host.Database.IsOpen)
+            {
+                MessageBox.Show("You first need to open a database!", "Add Entry");
+            }
+
+            m_tsmiAddEntry.Checked = !m_tsmiAddEntry.Checked;
+
+            if (m_tsmiAddEntry.Checked)
+            {
+                // enable function
+                AddHandlerAddEntry();
+            }
+            else
+            {
+                // disable function
+                RemoveHandlerAddEntry();
+            }
+        }
+
+        private void OnMouseUp(object sender, MouseEventArgs e)
+        {
+            // Only allow left mouse button
+            if (e.Button == MouseButtons.Left)
+            {
+                ListViewItem item;
+                int idx = GetSubItemAt(e.X, e.Y, out item);
+                if (idx == -1)
+                {
+                    // No item was clicked
+                    long datNow = DateTime.Now.Ticks;
+                    long datMouseDown = m_mouseDownForAeAt.Ticks;
+
+                    // Fast double clicking with the left moaus button
+                    if (datNow - datMouseDown < m_mouseTimeMin)
+                    {
+                        // KeePass has no define or constant for the add entry keystroke
+                        SendKeys.Send("{INSERT}");
+                    }
+                    m_mouseDownForAeAt = DateTime.Now;
+                }
+            }
+        }
+    }
+}
