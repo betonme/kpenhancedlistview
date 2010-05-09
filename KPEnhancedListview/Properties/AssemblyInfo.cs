@@ -22,7 +22,7 @@ using System.Runtime.InteropServices;
 
 // General assembly properties
 [assembly: AssemblyTitle("kpEnhancedListview")]
-[assembly: AssemblyDescription("Extend the KeePass Listview. Add user defined columns and inline editing.")]
+[assembly: AssemblyDescription("Extend the KeePass Listview. Add user defined columns and inline editing.\nhttp://code.google.com/p/kpenhancedlistview")]
 [assembly: AssemblyConfiguration("")]
 [assembly: AssemblyCompany("Frank Glaser")]
 [assembly: AssemblyProduct("KeePass Plugin")]

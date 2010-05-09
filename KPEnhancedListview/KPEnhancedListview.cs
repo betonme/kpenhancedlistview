@@ -62,25 +62,23 @@ namespace KPEnhancedListview
     {
         // The plugin remembers its host in this variable.
         private IPluginHost m_host = null;
-         
+        
+        ToolStripItemCollection m_tsMenu = null;
+
         private ToolStripSeparator m_tsSeparator = null;
-        private ToolStripMenuItem m_tsmiAddEntry = null;
-        private ToolStripMenuItem m_tsmiInlineEditing = null;
-        private ToolStripMenuItem m_tsmiAddCustomColumns = null;
-        private ToolStripMenuItem m_tsmiRemoveCustomColumns = null;
 
         private const string m_ctseName = "m_toolMain";
         private const string m_clveName = "m_lvEntries";
-        private const string m_ctveName = "m_tvGroups";
-        private const string m_csceName = "m_splitVertical";
+        //private const string m_ctveName = "m_tvGroups";
+        //private const string m_csceName = "m_splitVertical";
 
         private CustomToolStripEx m_ctseToolMain = null;
         private CustomListViewEx m_clveEntries = null;
-        private CustomTreeViewEx m_ctveGroups = null;
-        private CustomSplitContainerEx m_csceSplitVertical = null;
+        //private CustomTreeViewEx m_ctveGroups = null;
+        //private CustomSplitContainerEx m_csceSplitVertical = null;
 
         private EventSuppressor m_evEntries = null;
-        private EventSuppressor m_evMainWindow = null;
+        //private EventSuppressor m_evMainWindow = null;
 
         // Mouse handler helper for detecting InlineEditing and AddEntry
         private const int m_mouseTimeMin = 3000000;
@@ -104,57 +102,34 @@ namespace KPEnhancedListview
             m_host = host;
 
             // Get a reference to the 'Tools' menu item container
-            ToolStripItemCollection tsMenu = m_host.MainWindow.ToolsMenu.DropDownItems;
+            m_tsMenu = m_host.MainWindow.ToolsMenu.DropDownItems;
 
             // Add a separator at the bottom
             m_tsSeparator = new ToolStripSeparator();
-            tsMenu.Add(m_tsSeparator);
-
-            // Add menu item
-            m_tsmiAddEntry = new ToolStripMenuItem();
-            m_tsmiAddEntry.Text = "Double Click add an Entry";
-            m_tsmiAddEntry.Click += OnMenuAddEntry;
-            tsMenu.Add(m_tsmiAddEntry);
-            
-            // Add menu item
-            m_tsmiInlineEditing = new ToolStripMenuItem();
-            m_tsmiInlineEditing.Text = "Inline Editing";
-            m_tsmiInlineEditing.Click += OnMenuInlineEditing;
-            tsMenu.Add(m_tsmiInlineEditing);
-
-            // Add menu item
-            m_tsmiAddCustomColumns = new ToolStripMenuItem();
-            m_tsmiAddCustomColumns.Text = "Add Custom Columns";
-            m_tsmiAddCustomColumns.Click += OnMenuAddCustomColumns;
-            tsMenu.Add(m_tsmiAddCustomColumns);
-
-            // Add menu item
-            m_tsmiRemoveCustomColumns = new ToolStripMenuItem();
-            m_tsmiRemoveCustomColumns.Text = "Remove Custom Columns";
-            m_tsmiRemoveCustomColumns.Click += OnMenuRemoveCustomColumns;
-            tsMenu.Add(m_tsmiRemoveCustomColumns);
+            m_tsMenu.Add(m_tsSeparator);
 
             // We want a notification when the user tried to save the current database
             m_host.MainWindow.FileSaved += OnFileSaved;
 
             // Find the listview control 
-            m_clveEntries = (CustomListViewEx)FindControlRecursive(m_host.MainWindow, m_clveName);
-            m_ctveGroups = (CustomTreeViewEx)FindControlRecursive(m_host.MainWindow, m_ctveName);
-            m_ctseToolMain = (CustomToolStripEx)FindControlRecursive(m_host.MainWindow, m_ctseName);
-            m_csceSplitVertical = (CustomSplitContainerEx)FindControlRecursive(m_host.MainWindow, m_csceName);
+            m_ctseToolMain = (CustomToolStripEx)Util.FindControlRecursive(m_host.MainWindow, m_ctseName);
+            m_clveEntries = (CustomListViewEx)Util.FindControlRecursive(m_host.MainWindow, m_clveName);
+            //m_tsmiMenuView = (ToolStripMenuItem)KPELVUtil.FindControlRecursive(m_host.MainWindow, m_tsmiName);
+            //m_ctveGroups = (CustomTreeViewEx)FindControlRecursive(m_host.MainWindow, m_ctveName);
+            //m_csceSplitVertical = (CustomSplitContainerEx)FindControlRecursive(m_host.MainWindow, m_csceName);
 
             // Initialize EventSuppressor
             m_evEntries = new EventSuppressor(m_clveEntries);
-            m_evMainWindow = new EventSuppressor(m_host.MainWindow); //(Control)this);//(Control)m_host.MainWindow);
+            //m_evMainWindow = new EventSuppressor(m_host.MainWindow); //(Control)this);//(Control)m_host.MainWindow);
 
             // Initialize Inline Editing
             InitializeInlineEditing();
 
-            // Initialize Custom columns
-            InitializeCustomColumns();
-
             // Initialize add new entry on double click function
             InitializeAddEntry();
+
+            // Initialize Custom columns
+            InitializeCustomColumns();
 
             // Tell windows we are interested in drawing items in ListBox on our own
             m_clveEntries.OwnerDraw = true;
@@ -179,12 +154,7 @@ namespace KPEnhancedListview
         public override void Terminate()
         {
             // Remove all of our menu items
-            ToolStripItemCollection tsMenu = m_host.MainWindow.ToolsMenu.DropDownItems;
-            tsMenu.Remove(m_tsSeparator);
-            tsMenu.Remove(m_tsmiAddEntry);
-            tsMenu.Remove(m_tsmiInlineEditing);
-            tsMenu.Remove(m_tsmiAddCustomColumns);
-            tsMenu.Remove(m_tsmiRemoveCustomColumns);
+            m_tsMenu.Remove(m_tsSeparator);
 
             // Important! Remove event handlers!
             m_host.MainWindow.FileSaved -= OnFileSaved;
@@ -192,42 +162,48 @@ namespace KPEnhancedListview
             m_clveEntries.DrawItem -= new DrawListViewItemEventHandler(this.DrawItemHandler);
             m_clveEntries.DrawSubItem -= new DrawListViewSubItemEventHandler(this.DrawSubItemHandler);
             m_clveEntries.DrawColumnHeader -= new DrawListViewColumnHeaderEventHandler(this.DrawColumnHeaderHandler);
-            
-            // Undo Initialize
-            TerminateCustomColumns();
 
             // Undo OnMenuInlineEditing
             TerminateInlineEditing();
-            
+
             // AddEntry
             TerminateAddEntry();
+
+            // Undo Initialize
+            TerminateCustomColumns();
         }
 
         //
         // Shared functions
         //
-        private void DrawItemHandler(object sender, DrawListViewItemEventArgs e)
+        private void UpdateSaveIcon()
         {
+            // Update toolbar save icon
+            m_host.MainWindow.UpdateUI(false, null, false, null, false, null, true);
+        }
+
+        private void DrawItemHandler(object sender, DrawListViewItemEventArgs e)
+        {           
             // CustomColumns
             // Should be not necessary only to avoid issues
-            if (m_lCustomColums.Count != 0)
+            if (m_lCustomColumns.Count != 0)
             {
-                if (m_clveEntries.Items.Count != 0)
+                //if (m_clveEntries.Items.Count != 0)
                 {
-//TODO update and sort very slow ???
                     //if (m_clveEntries.Items[0].SubItems.Count != m_clveEntries.Columns.Count)
                     //if (m_clveEntries.Items[m_clveEntries.Items.Count-1].SubItems.Count != m_clveEntries.Columns.Count)
+//TODO update and sort very slow ???
+// TODO cancel criterias ?                   
+                    if (e.Item.SubItems.Count != m_lCustomColumns.Count) //m_clveEntries.Columns.Count)
                     {
-// TODO cancel criterias ?
-/*
                         // Stable but slow
                         UpdateListView();
 
                         // Faster but it flickrs
                         //UpdateListViewItem(e.Item);
 
-                        SortListView();
-*/ 
+                        // Done during UpdateListView
+                        //SortListView();
                     }
                 }
             }

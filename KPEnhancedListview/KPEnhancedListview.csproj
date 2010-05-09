@@ -18,7 +18,7 @@
     <OldToolsVersion>3.5</OldToolsVersion>
     <UpgradeBackupLocation>
     </UpgradeBackupLocation>
-    <TargetFrameworkVersion>v2.0</TargetFrameworkVersion>
+    <TargetFrameworkVersion>v3.5</TargetFrameworkVersion>
     <TargetFrameworkSubset>
     </TargetFrameworkSubset>
   </PropertyGroup>
@@ -27,7 +27,7 @@
     <DebugType>full</DebugType>
     <Optimize>false</Optimize>
     <OutputPath>Build\Debug\</OutputPath>
-    <DefineConstants>TRACE;DEBUG;USE_RTB USE_NET20</DefineConstants>
+    <DefineConstants>TRACE;DEBUG;USE_RTB USE_NET35 USE_LS_NOT</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
@@ -35,16 +35,20 @@
     <DebugType>pdbonly</DebugType>
     <Optimize>true</Optimize>
     <OutputPath>Build\Release\</OutputPath>
-    <DefineConstants>TRACE;USE_RTB USE_NET20</DefineConstants>
+    <DefineConstants>TRACE;USE_RTB USE_NET35 USE_LS_NOT</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="KeePass, Version=2.1.0.28189, Culture=neutral, PublicKeyToken=fed2ed7716aecf5c, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
+      <ExecutableExtension>.exe</ExecutableExtension>
       <HintPath>..\..\..\..\..\..\Program Files (x86)\KeePass Password Safe 2\KeePass.exe</HintPath>
     </Reference>
     <Reference Include="System" />
+    <Reference Include="System.Core">
+      <RequiredTargetFramework>3.5</RequiredTargetFramework>
+    </Reference>
     <Reference Include="System.Data" />
     <Reference Include="System.Drawing" />
     <Reference Include="System.Windows.Forms" />
@@ -55,6 +59,23 @@
     <Compile Include="EventSuppressor.cs" />
     <Compile Include="InlineEditing.cs" />
     <Compile Include="CustomColumns.cs" />
+    <Compile Include="CustomColumnsForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="CustomColumnsForm.Designer.cs">
+      <DependentUpon>CustomColumnsForm.cs</DependentUpon>
+    </Compile>
+    <Compile Include="EnumPair.cs" />
+    <Compile Include="CustomColumn.cs" />
+    <Compile Include="DataGridViewCheckBox.cs" />
+    <Compile Include="MultilineTextBox.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="Properties\Resources.Designer.cs">
+      <AutoGen>True</AutoGen>
+      <DesignTime>True</DesignTime>
+      <DependentUpon>Resources.resx</DependentUpon>
+    </Compile>
     <Compile Include="Util.cs" />
     <Compile Include="PaddedTextbox.cs">
       <SubType>UserControl</SubType>
@@ -64,9 +85,35 @@
     <Compile Include="KPEnhancedListview.cs">
     </Compile>
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="ThreeStateCheckBox.cs" />
+    <Compile Include="TNumEditBox.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="TNumEditDataGridViewElements.cs">
+      <SubType>Component</SubType>
+    </Compile>
   </ItemGroup>
   <ItemGroup>
     <None Include="app.config" />
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="CustomColumnsForm.resx">
+      <DependentUpon>CustomColumnsForm.cs</DependentUpon>
+      <SubType>Designer</SubType>
+      <LastGenOutput>CustomColumnsForm1.Designer.cs</LastGenOutput>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Properties\Resources.resx">
+      <Generator>ResXFileCodeGenerator</Generator>
+      <LastGenOutput>Resources.Designer.cs</LastGenOutput>
+    </EmbeddedResource>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\B48x48_Customcolumns.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Content Include="Resources\B16x16_CustomColumns.png" />
+    <Content Include="Resources\B16x16_Package_Settings.png" />
+    <Content Include="Resources\KeePass.ico" />
   </ItemGroup>
   <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
