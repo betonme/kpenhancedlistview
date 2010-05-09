@@ -17,15 +17,38 @@ namespace KPEnhancedListview
 {
     partial class KPEnhancedListviewExt
     {
+        private const string m_cfgAddEntry = "KPEnhancedListview_AddEntry";
+
         private DateTime m_mouseDownForAeAt = DateTime.MinValue;
+
+        private ToolStripMenuItem m_tsmiAddEntry = null;
 
         private void InitializeAddEntry()
         {
-            // Nothing todo
+            // Add menu item
+            m_tsmiAddEntry = new ToolStripMenuItem();
+            m_tsmiAddEntry.Text = "Double Click add an Entry";
+            m_tsmiAddEntry.Click += OnMenuAddEntry;
+            m_tsMenu.Add(m_tsmiAddEntry);
+
+            // Check custom config
+            if (m_host.CustomConfig.GetBool(m_cfgAddEntry, false))
+            {
+                m_tsmiAddEntry.Checked = true;
+                AddHandlerAddEntry();
+            }
+            else
+            {
+                m_tsmiAddEntry.Checked = false;
+                RemoveHandlerAddEntry();
+            }
         }
 
         public void TerminateAddEntry()
         {
+            // Remove our menu items
+            m_tsMenu.Remove(m_tsmiAddEntry);
+
             RemoveHandlerAddEntry();
         }
 
@@ -43,10 +66,13 @@ namespace KPEnhancedListview
         {
             if (!m_host.Database.IsOpen)
             {
-                MessageBox.Show("You first need to open a database!", "Add Entry");
+                // doesn't matter
             }
 
             m_tsmiAddEntry.Checked = !m_tsmiAddEntry.Checked;
+
+            // save config
+            m_host.CustomConfig.SetBool(m_cfgInlineEditing, m_tsmiAddEntry.Checked);
 
             if (m_tsmiAddEntry.Checked)
             {

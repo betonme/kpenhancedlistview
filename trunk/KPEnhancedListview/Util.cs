@@ -23,13 +23,14 @@ using KeePass.Util;
 using KeePass.Resources;
 
 using KeePassLib;
+using KeePassLib.Collections;
 using KeePassLib.Cryptography.PasswordGenerator;
 using KeePassLib.Security;
 using KeePassLib.Utility;
 
 namespace KPEnhancedListview
 {
-    partial class KPEnhancedListviewExt
+    public static class Util
     {
 
         /// <summary>
@@ -40,7 +41,7 @@ namespace KPEnhancedListview
         /// </param>
         /// <param name="name">Name of the control to look for</param>
         /// <returns>The Control we found</returns>
-        private Control FindControlRecursive(Control container, string name)
+        internal static Control FindControlRecursive(Control container, string name)
         {
             if (container.Name == name)
                 return container;
@@ -56,8 +57,72 @@ namespace KPEnhancedListview
             return null;
         }
 
+        // Get all KeePass Columns
+        internal static List<string> GetListKeePassColumns(CustomListViewEx clve)
+        {
+            List<string> strl = new List<string>();
+
+            foreach (ColumnHeader ch in clve.Columns)
+            {
+                strl.Add(ch.Text);
+            }
+            
+            strl.Sort();
+            return strl;
+        }
+
+        // Get all user defined strings
+        internal static List<string> GetListEntriesUserStrings(PwGroup pwg)
+        {
+            List<string> strl = new List<string>();
+
+            // Add all known pwentry strings
+            foreach (PwEntry pe in pwg.GetEntries(true))
+            {
+                foreach (KeyValuePair<string, ProtectedString> pstr in pe.Strings)
+                {
+                    if (!strl.Contains(pstr.Key))
+                    {
+                        if (!PwDefs.IsStandardField(pstr.Key))
+                        {
+                            strl.Add(pstr.Key);
+                        }
+                    }
+                }
+            }
+
+            strl.Sort();
+
+            return strl;
+        }
+
+        /*
+        // Get all user defined strings
+        internal static Dictionary<string, string> GetDictEntriesUserStrings(PwGroup pwg)
+        {
+            Dictionary<string, string> strd = new Dictionary<string, string>();
+            //SortedDictionary<string, string> strd = new SortedDictionary<string, string>();
+
+            // Add all known pwentry strings
+            foreach (PwEntry pe in pwg.GetEntries(true))
+            {
+                foreach (KeyValuePair<string, ProtectedString> pstr in pe.Strings)
+                {
+                    if (!strd.ContainsKey(pstr.Key))
+                    {
+                        if (!PwDefs.IsStandardField(pstr.Key))
+                        {
+                            strd.Add(pstr.Key, pstr.Value.ReadString());
+                        }
+                    }
+                }
+            }
+
+            return strd;
+        }*/
+
         // Multiline string to oneline string
-        private string StringToOneLine(string Text, int SubItem)
+        internal static string StringToOneLine(string Text, int SubItem)
         {
             switch ((AppDefs.ColumnId)SubItem)
             {
@@ -69,8 +134,8 @@ namespace KPEnhancedListview
                 case AppDefs.ColumnId.LastAccessTime:
                 case AppDefs.ColumnId.LastModificationTime:
                 case AppDefs.ColumnId.ExpiryTime:
-                case AppDefs.ColumnId.Attachment:
                 case AppDefs.ColumnId.Uuid:
+                case AppDefs.ColumnId.Attachment:
                     // No changes
                     return Text;
                 case AppDefs.ColumnId.Notes:
@@ -81,7 +146,7 @@ namespace KPEnhancedListview
         }
 
         // String to multiline string
-        private string StringToMultiLine(string Text, int SubItem)
+        internal static string StringToMultiLine(string Text, int SubItem)
         {
             switch ((AppDefs.ColumnId)SubItem)
             {
@@ -93,8 +158,8 @@ namespace KPEnhancedListview
                 case AppDefs.ColumnId.LastAccessTime:
                 case AppDefs.ColumnId.LastModificationTime:
                 case AppDefs.ColumnId.ExpiryTime:
-                case AppDefs.ColumnId.Attachment:
                 case AppDefs.ColumnId.Uuid:
+                case AppDefs.ColumnId.Attachment:
                     // No changes
                     return Text;
                 case AppDefs.ColumnId.Notes:
@@ -109,23 +174,22 @@ namespace KPEnhancedListview
             }
         }
 
-        /*
         // Adapted from KeePass
-        private void EnsureVisibleEntry(PwUuid uuid)
+        internal static void EnsureVisibleEntry(CustomListViewEx clve, PwUuid uuid)
         {
-            ListViewItem lvi = GuiFindEntry(uuid);
+            ListViewItem lvi = GuiFindEntry(clve, uuid);
             if (lvi == null) { Debug.Assert(false); return; }
 
-            m_clveEntries.EnsureVisible(lvi.Index);
+            clve.EnsureVisible(lvi.Index);
         }
 
         // Adapted from KeePass
-        private ListViewItem GuiFindEntry(PwUuid puSearch)
+        internal static ListViewItem GuiFindEntry(CustomListViewEx clve, PwUuid puSearch)
         {
             Debug.Assert(puSearch != null);
             if (puSearch == null) return null;
 
-            foreach (ListViewItem lvi in m_clveEntries.Items)
+            foreach (ListViewItem lvi in clve.Items)
             {
                 if (((PwEntry)lvi.Tag).Uuid.EqualsValue(puSearch))
                     return lvi;
@@ -133,6 +197,51 @@ namespace KPEnhancedListview
 
             return null;
         }
-        */
+
+        // Adapted from KeePass
+        /*
+        public static void SelectEntries(CustomListViewEx clve, PwObjectList<PwEntry> lEntries, bool bDeselectOthers)
+        {
+            for (int i = 0; i < clve.Items.Count; ++i)
+            {
+                PwEntry pe = (clve.Items[i].Tag as PwEntry);
+                if (pe == null) { Debug.Assert(false); continue; }
+
+                bool bFound = false;
+                foreach (PwEntry peFocus in lEntries)
+                {
+                    if (pe == peFocus)
+                    {
+                        clve.Items[i].Selected = true;
+                        bFound = true;
+                        break;
+                    }
+                }
+
+                if (bDeselectOthers && !bFound)
+                    clve.Items[i].Selected = false;
+            }
+        }*/
+
+        // Adapted from KeePass
+        internal static void SelectEntry(CustomListViewEx clve, PwEntry entry, bool bDeselectOthers)
+        {
+            for (int i = 0; i < clve.Items.Count; ++i)
+            {
+                PwEntry pe = (clve.Items[i].Tag as PwEntry);
+                if (pe == null) { Debug.Assert(false); continue; }
+
+                bool bFound = false;
+
+                if (pe == entry)
+                {
+                    clve.Items[i].Selected = true;
+                    bFound = true;
+                }  
+
+                if (bDeselectOthers && !bFound)
+                    clve.Items[i].Selected = false;
+            }
+        }
     }
 }

@@ -19,6 +19,7 @@ using System.Timers;
 namespace KPEnhancedListview
 {
     /// 
+    /// AddCustomColumns NewString
     /// This static class contains methods named Show() to display a dialog box 
     /// with an input field, similar in appearance to the one in Visual Basic.
     /// The Show() method returns null if the user clicks Cancel, and non-null
@@ -27,16 +28,16 @@ namespace KPEnhancedListview
     public class InputBox
     {
         static public string Show(string Prompt)
-        { return Show(Prompt, null, null, int.MinValue, int.MinValue); }
+        { return Show(Prompt, null, null); }
 
-        static public string Show(string Prompt, string Title, string Default)
-        { return Show(Prompt, Title, Default, int.MinValue, int.MinValue); }
+        static public string Show(string Prompt, string Title)
+        { return Show(Prompt, Title, null); }
 
-        static public string Show(string Prompt, string Title, string Default, int xPos, int yPos)
+        static public string Show(string Prompt, string Title, string Default)    
         {
             if (Title == null)
                 Title = Application.ProductName;
-            InputBoxDialog dlg = new InputBoxDialog(Prompt, Title, xPos, yPos);
+            InputBoxDialog dlg = new InputBoxDialog(Prompt, Title);
             if (Default != null)
                 dlg.txtInput.Text = Default;
             DialogResult result = dlg.ShowDialog();
@@ -53,9 +54,7 @@ namespace KPEnhancedListview
             private System.Windows.Forms.Button btnOK;
             private System.Windows.Forms.Button btnCancel;
 
-            public InputBoxDialog(string prompt, string title) : this(prompt, title, int.MinValue, int.MinValue) { }
-
-            public InputBoxDialog(string prompt, string title, int xPos, int yPos)
+            public InputBoxDialog(string prompt, string title)
             {
                 InitializeComponent();
 
@@ -102,7 +101,7 @@ namespace KPEnhancedListview
                 this.txtInput.Name = "txtInput";
                 this.txtInput.Size = new System.Drawing.Size(381, 20);
                 this.txtInput.TabIndex = 0;
-                this.txtInput.Text = "";
+                this.txtInput.Text = string.Empty;
                 // 
                 // btnOK
                 // 
@@ -143,6 +142,7 @@ namespace KPEnhancedListview
     }
 
     /// 
+    /// RemoveCustomColumns
     /// This static class contains methods named Show() to display a dialog box 
     /// with an listbox field.
     /// The Show() method returns null if the user clicks Cancel, and non-null
@@ -151,15 +151,12 @@ namespace KPEnhancedListview
     public class InputListBox
     {
         static public string[] Show(string[] Options, string Prompt)
-        { return Show(Options, Prompt, null, 0, int.MinValue, int.MinValue); }
+        { return Show(Options, Prompt, null, 0); }
 
         static public string[] Show(string[] Options, string Prompt, string Title)
-        { return Show(Options, Prompt, Title, 0, int.MinValue, int.MinValue); }
+        { return Show(Options, Prompt, Title, 0); }
 
         static public string[] Show(string[] Options, string Prompt, string Title, int Selected)
-        { return Show(Options, Prompt, Title, Selected, int.MinValue, int.MinValue); }
-
-        static public string[] Show(string[] Options, string Prompt, string Title, int Selected, int xPos, int yPos)
         {
             if (Title == null)
                 Title = Application.ProductName;
@@ -173,7 +170,7 @@ namespace KPEnhancedListview
                 return null;
             }
 
-            ListBoxDialog dlg = new ListBoxDialog(Options, Prompt, Title, Selected, xPos, yPos);
+            ListBoxDialog dlg = new ListBoxDialog(Options, Prompt, Title, Selected);
 
             DialogResult result = dlg.ShowDialog();
             if (result == DialogResult.Cancel)
@@ -205,9 +202,7 @@ namespace KPEnhancedListview
             private System.Windows.Forms.Button btnOK;
             private System.Windows.Forms.Button btnCancel;
 
-            public ListBoxDialog(string[] options, string prompt, string title, int selected) : this(options, prompt, title, selected, int.MinValue, int.MinValue) { }
-
-            public ListBoxDialog(string[] options, string prompt, string title, int selected, int xPos, int yPos)
+            public ListBoxDialog(string[] options, string prompt, string title, int selected)
             {
                 InitializeComponent();
 
@@ -260,7 +255,7 @@ namespace KPEnhancedListview
                 this.lbInput.Name = "lbInput";
                 this.lbInput.Size = new System.Drawing.Size(302, 80);
                 this.lbInput.TabIndex = 0;
-                this.lbInput.Text = "";
+                this.lbInput.Text = string.Empty;
                 this.lbInput.SelectionMode = SelectionMode.MultiExtended;
                 // 
                 // btnOK
@@ -304,6 +299,7 @@ namespace KPEnhancedListview
     }
 
     /// 
+    /// AddCustomColumns
     /// This static class contains methods named Show() to display a dialog box 
     /// with an listbox field.
     /// The Show() method returns null if the user clicks Cancel, and non-null
@@ -312,20 +308,17 @@ namespace KPEnhancedListview
     public class InputComboBox
     {
         static public string[] Show(string[] Options, string Prompt)
-        { return Show(Options, Prompt, null, 0, int.MinValue, int.MinValue); }
+        { return Show(Options, Prompt, null, 0); }
 
         static public string[] Show(string[] Options, string Prompt, string Title)
-        { return Show(Options, Prompt, Title, 0, int.MinValue, int.MinValue); }
+        { return Show(Options, Prompt, Title, 0); }
 
         static public string[] Show(string[] Options, string Prompt, string Title, int Selected)
-        { return Show(Options, Prompt, Title, Selected, int.MinValue, int.MinValue); }
-
-        static public string[] Show(string[] Options, string Prompt, string Title, int Selected, int xPos, int yPos)
         {
             if (Title == null)
                 Title = Application.ProductName;
 
-            ComboBoxDialog dlg = new ComboBoxDialog(Options, Prompt, Title, Selected, xPos, yPos);
+            ComboBoxDialog dlg = new ComboBoxDialog(Options, Prompt, Title, Selected);
             DialogResult result = dlg.ShowDialog();
             if (result == DialogResult.Cancel)
                 return null;
@@ -357,9 +350,7 @@ namespace KPEnhancedListview
             private System.Windows.Forms.Button btnCancel;
             private System.Windows.Forms.Button btnNew;
 
-            public ComboBoxDialog(string[] options, string prompt, string title, int selected) : this(options, prompt, title, selected, int.MinValue, int.MinValue) { }
-
-            public ComboBoxDialog(string[] options, string prompt, string title, int selected, int xPos, int yPos)
+            public ComboBoxDialog(string[] options, string prompt, string title, int selected)
             {
                 InitializeComponent();
 
@@ -380,6 +371,8 @@ namespace KPEnhancedListview
                 SizeF size = g.MeasureString(prompt, lblPrompt.Font, lblPrompt.Width);
                 if (size.Height > lblPrompt.Height)
                     this.Height += (int)size.Height - lblPrompt.Height;
+//TODO
+                //this.Height *= 2;
 
                 lbInput.Focus();
             }
@@ -412,7 +405,7 @@ namespace KPEnhancedListview
                 this.lbInput.Name = "lbInput";
                 this.lbInput.Size = new System.Drawing.Size(302, 80);
                 this.lbInput.TabIndex = 0;
-                this.lbInput.Text = "";
+                this.lbInput.Text = string.Empty;
                 this.lbInput.SelectionMode = SelectionMode.MultiExtended;
                 // 
                 // btnOK

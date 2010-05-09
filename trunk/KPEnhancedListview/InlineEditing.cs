@@ -31,13 +31,12 @@ namespace KPEnhancedListview
 {
     partial class KPEnhancedListviewExt
     {
-        // ListView messages
-        private const int LVM_FIRST = 0x1000;
-        private const int LVM_GETCOLUMNORDERARRAY = (LVM_FIRST + 59);
+        private const string m_cfgInlineEditing = "KPEnhancedListview_InlineEditing";
 
         private DateTime m_mouseDownForIeAt = DateTime.MinValue;
 
         private ListViewItem m_previousClickedListViewItem = null;
+        private int m_previousClickedListViewSubItem = 0;
 
         private static Mutex mutEdit = new Mutex();
 
@@ -52,10 +51,6 @@ namespace KPEnhancedListview
         // The SubItem being edited
         //TODO private ListViewItem.ListViewSubItem _editSubItem;
         private int _editSubItem;
-
-        // ListView send messages
-        [DllImport("user32.dll")]
-        private static extern IntPtr SendMessage(IntPtr hWnd, int msg, IntPtr wPar, IntPtr lPar);
         
         //[DllImport("user32.dll", CharSet = CharSet.Ansi)]
         //private static extern IntPtr SendMessage(IntPtr hWnd, int msg, int len, ref	int[] order);
@@ -67,25 +62,47 @@ namespace KPEnhancedListview
         // Unlock listview
         //LockWindow(0);
 
+        private ToolStripMenuItem m_tsmiInlineEditing = null;
+
         private void InitializeInlineEditing()
         {
+            // Add menu item
+            m_tsmiInlineEditing = new ToolStripMenuItem();
+            m_tsmiInlineEditing.Text = "Inline Editing";
+            m_tsmiInlineEditing.Click += OnMenuInlineEditing;
+            m_tsMenu.Add(m_tsmiInlineEditing);
+
+            // Add control to listview
             m_textBoxComment = new PaddedTextBox();
             m_textBoxComment.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
             m_textBoxComment.Location = new System.Drawing.Point(32, 104);
             m_textBoxComment.Name = "m_textBoxComment";
             m_textBoxComment.Size = new System.Drawing.Size(80, 16);
             m_textBoxComment.TabIndex = 3;
-            m_textBoxComment.Text = "";
+            m_textBoxComment.Text = string.Empty;
             m_textBoxComment.AutoSize = false;
             m_textBoxComment.Padding = new Padding(6, 1, 1, 0);
             m_textBoxComment.Visible = false;
-            
-            // Add control to listview
-            m_clveEntries.Controls.Add(m_textBoxComment);   
+            m_clveEntries.Controls.Add(m_textBoxComment);
+
+            // Check custom config
+            if (m_host.CustomConfig.GetBool(m_cfgInlineEditing, false))
+            {
+                m_tsmiInlineEditing.Checked = true;
+                AddHandlerInlineEditing();
+            }
+            else
+            {
+                m_tsmiInlineEditing.Checked = false;
+                RemoveHandlerInlineEditing();
+            }
         }
 
         public void TerminateInlineEditing()
         {
+            // Remove our menu items
+            m_tsMenu.Remove(m_tsmiInlineEditing);
+
             RemoveHandlerInlineEditing();
         }
 
@@ -146,14 +163,17 @@ namespace KPEnhancedListview
 
             m_tsmiInlineEditing.Checked = !m_tsmiInlineEditing.Checked;
 
+            // save config
+            m_host.CustomConfig.SetBool(m_cfgInlineEditing, m_tsmiInlineEditing.Checked);
+
             if (m_tsmiInlineEditing.Checked)
             {
                 // enable function
-                m_clveEntries.FullRowSelect = true;
-                m_clveEntries.View = View.Details;
-                m_clveEntries.AllowColumnReorder = true;
+                //m_clveEntries.FullRowSelect = true;
+                //m_clveEntries.View = View.Details;
+                //m_clveEntries.AllowColumnReorder = true;
 
-                AddHandlerInlineEditing();                
+                AddHandlerInlineEditing();
             }
             else
             {
@@ -164,6 +184,8 @@ namespace KPEnhancedListview
 
         private void OnItemKeyDown(object sender, System.Windows.Forms.KeyEventArgs k)
         {
+//TODO Ctrl+F2  InlineEditing     // configurable and save
+//TODO Alt+F2   Edit Icon         // configurable and save
             if (k.KeyCode == Keys.F3)
             {
                 // edit selected item
@@ -184,24 +206,29 @@ namespace KPEnhancedListview
             if (e.Button == MouseButtons.Left)
             {
                 ListViewItem item;
-                int idx = GetSubItemAt(e.X, e.Y, out item);
+                int subitem = GetSubItemAt(e.X, e.Y, out item);
                 if (item != null)
                 {
                     if ((m_previousClickedListViewItem != null) && (item == m_previousClickedListViewItem))
                     {
-                        long datNow = DateTime.Now.Ticks;
-                        long datMouseDown = m_mouseDownForIeAt.Ticks;
-
-                        // Slow double clicking with the left moaus button
-                        if ((datNow - datMouseDown > m_mouseTimeMin) && (datNow - datMouseDown < m_mouseTimeMax))
+                        if (m_previousClickedListViewSubItem == subitem)
                         {
-                            Point pt = m_clveEntries.PointToClient(Cursor.Position);
-                            EditSubitemAt(pt);
+                            long datNow = DateTime.Now.Ticks;
+                            long datMouseDown = m_mouseDownForIeAt.Ticks;
+
+                            // Slow double clicking with the left moaus button
+                            if ((datNow - datMouseDown > m_mouseTimeMin) && (datNow - datMouseDown < m_mouseTimeMax))
+                            {
+                                Point pt = m_clveEntries.PointToClient(Cursor.Position);
+                                EditSubitemAt(pt);
+                                return;
+                            }
                         }
                     }
                     m_mouseDownForIeAt = DateTime.Now;
                 }
                 m_previousClickedListViewItem = item;
+                m_previousClickedListViewSubItem = subitem;
             }
         }
 
@@ -210,7 +237,7 @@ namespace KPEnhancedListview
             if (_editingControl != null)
             {
                 // Close and cancel
-                EndEditing(false);
+                EndEditing(_editingControl, _editItem, _editSubItem, false);
             }
         }
 
@@ -230,13 +257,19 @@ namespace KPEnhancedListview
                 return;
             }
 
+            if (Item.Index == -1)
+            {
+                mutEdit.ReleaseMutex();
+                return;
+            }
+
             // Remove/Suppress UIStateUpdated Event Handler
             // UIStateUpdated is called on entering InlineEditing 
             //TODO m_evMainWindow Suppress not working
             //m_evMainWindow.Suppress("OnPwListCustomColumnUpdate");
-            m_host.MainWindow.UIStateUpdated -= new EventHandler(OnPwListCustomColumnUpdate);
+            //m_host.MainWindow.UIStateUpdated -= new EventHandler(OnPwListCustomColumnUpdate);
 
-            m_clveEntries.EnsureVisible(Item.Index);
+            Util.EnsureVisibleEntry(m_clveEntries, ((PwEntry)Item.Tag).Uuid);
 
             // Set MultiLine property
             switch ((AppDefs.ColumnId)SubItem)
@@ -249,15 +282,19 @@ namespace KPEnhancedListview
                 case AppDefs.ColumnId.LastAccessTime:
                 case AppDefs.ColumnId.LastModificationTime:
                 case AppDefs.ColumnId.ExpiryTime:
-                case AppDefs.ColumnId.Attachment:
                 case AppDefs.ColumnId.Uuid:
+                case AppDefs.ColumnId.Attachment:
                     c.Multiline = false;
-                    //c.LineSpacing(20); // Single spacing
+#if USE_LS
+                    c.LineSpacing(20); // Single spacing
+#endif
                     break;
                 case AppDefs.ColumnId.Notes:
                 default:
                     c.Multiline = true;
-                    //c.LineSpacing(27); //26 ok); // Spacing equal listview item height
+#if USE_LS
+                    c.LineSpacing(27); //26 ok); // Spacing equal listview item height
+#endif
                     break;
             }
 
@@ -268,19 +305,27 @@ namespace KPEnhancedListview
                 case AppDefs.ColumnId.LastAccessTime:
                 case AppDefs.ColumnId.LastModificationTime:
                 case AppDefs.ColumnId.ExpiryTime:
-                case AppDefs.ColumnId.Attachment:
                 case AppDefs.ColumnId.Uuid:
+                case AppDefs.ColumnId.Attachment:
                     // No editing allowed
                     c.ReadOnly = true;
                     break;
                 default:
                     // Editing allowed
-                    c.ReadOnly = false;
+                    try
+                    {
+                        c.ReadOnly = m_lCustomColumns[SubItem].ReadOnly;
+                    }
+                    catch
+                    {
+                        c.ReadOnly = false;
+                    }
                     break;
             }
 
             // Read SubItem text and set textbox property
-            c.Text = StringToMultiLine(ReadEntry(Item, SubItem), SubItem);
+            // TODO PasswordChar *** during editing for protected strings ???
+            c.Text = Util.StringToMultiLine(ReadEntry(Item, SubItem), SubItem);
             c.ScrollToTop();
             c.SelectAll();
 
@@ -292,11 +337,11 @@ namespace KPEnhancedListview
             c.Select();
             c.Focus();
 
-            _editingControl = c;
-            _editingControl.Leave += new EventHandler(_editControl_Leave);
-            _editingControl.LostFocus += new EventHandler(_editControl_LostFocus);
-            _editingControl.KeyPress += new KeyPressEventHandler(_editControl_KeyPress);
+            c.Leave += new EventHandler(_editControl_Leave);
+            c.LostFocus += new EventHandler(_editControl_LostFocus);
+            c.KeyPress += new KeyPressEventHandler(_editControl_KeyPress);
 
+            _editingControl = c;
             _editItem = Item;
             _editSubItem = SubItem;
 
@@ -304,10 +349,36 @@ namespace KPEnhancedListview
         }
 
         /// <summary>
+        /// Start Image Editing
+        /// </summary>
+        /// <param name="Item">ListViewItem to edit</param>
+        private void StartImageEditing(ListViewItem item)
+        {
+            IconPickerForm ipf = new IconPickerForm();
+            PwEntry pe = ((PwEntry)item.Tag);
+            ipf.InitEx(m_host.MainWindow.ClientIcons, (uint)PwIcon.Count, m_host.Database, (uint)pe.IconId, pe.CustomIconUuid);
+
+            if (ipf.ShowDialog() == DialogResult.OK)
+            {
+                if (ipf.ChosenCustomIconUuid != PwUuid.Zero)
+                    pe.CustomIconUuid = ipf.ChosenCustomIconUuid;
+                else
+                {
+                    pe.IconId = (PwIcon)ipf.ChosenIconId;
+                    pe.CustomIconUuid = PwUuid.Zero;
+                }
+
+                //bool bUpdImg = m_host.Database.UINeedsIconUpdate;
+                m_host.MainWindow.RefreshEntriesList();
+                UpdateSaveIcon();
+            }
+        }
+
+        /// <summary>
         /// Accept or discard current value of cell editor control
         /// </summary>
         /// <param name="AcceptChanges">Use the _editingControl's Text as new SubItem text or discard changes?</param>
-        private void EndEditing(bool AcceptChanges)
+        private void EndEditing(PaddedTextBox c, ListViewItem Item, int SubItem, bool AcceptChanges)
         {
             mutEdit.WaitOne();
 
@@ -317,25 +388,28 @@ namespace KPEnhancedListview
                 return;
             }
 
+            c.Leave -= new EventHandler(_editControl_Leave);
+            c.LostFocus -= new EventHandler(_editControl_LostFocus);
+            c.KeyPress -= new KeyPressEventHandler(_editControl_KeyPress);
+            
+            c.Visible = false;
+
             if (AcceptChanges == true)
             {
                 // Check if item and textbox contain different text
-                if (_editItem.SubItems[_editSubItem].Text != _editingControl.Text)
+                if (_editItem.SubItems[SubItem].Text != c.Text)
                 {
                     // Save changes
-                    SaveEntry(_editItem, _editSubItem, _editingControl.Text);
+                    AcceptChanges = SaveEntry(Item, SubItem, c.Text);
 
+                    // Avoid flickering
+                    // Set item text manually before calling RefreshEntriesList
                     // If Item is protected
-                    if (_editItem.SubItems[_editSubItem].Text.Equals(PwDefs.HiddenPassword))
+                    if (!_editItem.SubItems[_editSubItem].Text.Equals(PwDefs.HiddenPassword))
                     {
-                        // Set Text to hidden
-                        _editingControl.Text = PwDefs.HiddenPassword;
+                        // Updating the listview item
+                        _editItem.SubItems[_editSubItem].Text = Util.StringToOneLine(_editingControl.Text, _editSubItem);
                     }
-
-                    // Updating the listview item
-                    _editItem.SubItems[_editSubItem].Text = StringToOneLine(_editingControl.Text, _editSubItem);
-
-                    m_clveEntries.EnsureVisible(_editItem.Index);
                 }
                 else
                 {
@@ -346,25 +420,29 @@ namespace KPEnhancedListview
             else
             {
                 // Cancel 
-                // Nothing todo
+                // Nothing todo 
+                // AcceptChanges is false
             }
-
-            _editingControl.Leave -= new EventHandler(_editControl_Leave);
-            _editingControl.LostFocus -= new EventHandler(_editControl_LostFocus);
-            _editingControl.KeyPress -= new KeyPressEventHandler(_editControl_KeyPress);
-
-            _editingControl.Visible = false;
 
             _editingControl = null;
             _editItem = null;
             _editSubItem = -1;
 
-            m_clveEntries.Update();
+            if (AcceptChanges == true)
+            {
+                // The number of visible entries has not changed, so we can call RefreshEntriesList
+                UpdateSaveIcon();
+                m_host.MainWindow.RefreshEntriesList();
+                Util.EnsureVisibleEntry(m_clveEntries, ((PwEntry)Item.Tag).Uuid);
+                Util.SelectEntry(m_clveEntries, (PwEntry)Item.Tag, true);
+            }
+
+            //m_clveEntries.Update();
             m_clveEntries.Select();
 
             // Add/Resume UIStateUpdated Event Handler
             //m_evMainWindow.Resume("OnPwListCustomColumnUpdate");
-            m_host.MainWindow.UIStateUpdated += new EventHandler(OnPwListCustomColumnUpdate);
+            //m_host.MainWindow.UIStateUpdated += new EventHandler(OnPwListCustomColumnUpdate);
 
             mutEdit.ReleaseMutex();
         }
@@ -379,14 +457,14 @@ namespace KPEnhancedListview
 
             if (pe == null)
             {
-                return "";
+                return string.Empty;
             }
 
             switch ((AppDefs.ColumnId)SubItem)
             {
                 case AppDefs.ColumnId.Title:
                     //if(PwDefs.IsTanEntry(pe))
-                    //TODO tan list	 TanTitle ???		    pe.Strings.Set(PwDefs.TanTitle, new ProtectedString(false, Text));
+                    //TODO tan list	 TanTitle ?? 
                     //else
                     str = pe.Strings.Get(PwDefs.TitleField).ReadString();
                     break;
@@ -414,21 +492,32 @@ namespace KPEnhancedListview
                 case AppDefs.ColumnId.ExpiryTime:
                     str = TimeUtil.ToDisplayString(pe.ExpiryTime);
                     break;
-                case AppDefs.ColumnId.Attachment:
-                    str = pe.Binaries.KeysToString();
-                    break;
                 case AppDefs.ColumnId.Uuid:
                     str = pe.Uuid.ToHexString();
                     break;
+                case AppDefs.ColumnId.Attachment:
+                    str = pe.Binaries.KeysToString();
+                    break;
                 default:
-                    if (pe.Strings.Exists(m_clveEntries.Columns[SubItem].Text))
+                    //MessageBox.Show(m_lCustomColumns[SubItem].Column.ToString());
+                    //if (pe.Strings.Exists(m_clveEntries.Columns[SubItem].Text))
+                    try
                     {
-                        str = pe.Strings.Get(m_clveEntries.Columns[SubItem].Text).ReadString();
+                        if (pe.Strings.Exists(m_lCustomColumns[SubItem].Column))
+                        {
+                            //str = pe.Strings.Get(m_clveEntries.Columns[SubItem].Text).ReadString();
+                            str = pe.Strings.Get(m_lCustomColumns[SubItem].Column).ReadString();
+                        }
+                        else
+                        {
+                            // SubItem does not exist
+                            str = string.Empty; //Item.SubItems[SubItem].Text;
+                        }
                     }
-                    else
+                    catch
                     {
                         // SubItem does not exist
-                        str = Item.SubItems[SubItem].Text;
+                        str = string.Empty; //Item.SubItems[SubItem].Text;
                     }
 
                     break;
@@ -436,7 +525,7 @@ namespace KPEnhancedListview
             return str;
         }
 
-        private void SaveEntry(ListViewItem Item, int SubItem, string Text)
+        private bool SaveEntry(ListViewItem Item, int SubItem, string Text)
         {
             PwEntry pe = (PwEntry)Item.Tag;
             pe = m_host.Database.RootGroup.FindEntry(pe.Uuid, true);
@@ -475,20 +564,27 @@ namespace KPEnhancedListview
                 case AppDefs.ColumnId.LastAccessTime:
                 case AppDefs.ColumnId.LastModificationTime:
                 case AppDefs.ColumnId.ExpiryTime:
-                case AppDefs.ColumnId.Attachment:
                 case AppDefs.ColumnId.Uuid:
+                case AppDefs.ColumnId.Attachment:
                     // Nothing todo
                     break;
                 default:
-                    if (pe.Strings.Exists(m_clveEntries.Columns[SubItem].Text))
+                    /*if (pe.Strings.Exists(m_clveEntries.Columns[SubItem].Text))
                     {
                         pe.Strings.Set(m_clveEntries.Columns[SubItem].Text, new ProtectedString(pe.Strings.Get(m_clveEntries.Columns[SubItem].Text).IsProtected, Text));
                     }
                     else
-                    {
+                    {*/
                         // SubItem does not exist
-                        pe.Strings.Set(m_clveEntries.Columns[SubItem].Text, new ProtectedString(false, Text));
-                    }
+                        try
+                        {
+                            pe.Strings.Set(m_clveEntries.Columns[SubItem].Text, new ProtectedString(m_lCustomColumns[SubItem].Protect, Text));
+                        }
+                        catch
+                        {
+                            pe.Strings.Set(m_clveEntries.Columns[SubItem].Text, new ProtectedString(false, Text));
+                        }
+                    //}
                     break;
             }
 
@@ -497,11 +593,14 @@ namespace KPEnhancedListview
                 pe.LastModificationTime = peInit.LastModificationTime;
 
                 pe.History.Remove(pe.History.GetAt(pe.History.UCount - 1)); // Undo backup
+
+                return false;
             }
             else
             {
-                // Update toolbar save icon
-                m_host.MainWindow.UpdateUI(false, null, false, null, false, null, true);
+                //UpdateSaveIcon();
+
+                return true;
             }
         }
 
@@ -514,10 +613,47 @@ namespace KPEnhancedListview
             ListViewItem item;
             int subitem = GetSubItemAt(p.X, p.Y, out item);
 
+            // Image Editing
+            if (subitem == 0)
+            {
+                if (HitImageTestAt(p, item))
+                {
+                    StartImageEditing(item);
+                    return;
+                }
+            }
+
+            // Inline Editing
             if (subitem >= 0)
             {
                 StartEditing(m_textBoxComment, item, subitem);
+                return;
             }
+        }
+
+        private bool HitImageTestAt(Point p, ListViewItem item)
+        {
+            Rectangle rcItem = item.GetBounds(ItemBoundsPortion.Entire);
+            GraphicsUnit units = GraphicsUnit.Point;
+            if (item.ImageList != null)
+            {
+                Image img = item.ImageList.Images[0];
+                RectangleF rcImageF = img.GetBounds(ref units);
+                Rectangle rcImage = Rectangle.Round(rcImageF);
+
+                rcImage.Width += item.IndentCount + item.Position.X;
+                p.Offset(rcItem.Left, -rcItem.Top);
+
+                if (rcImage.Contains(p))
+                {
+                    return true;
+                }
+                else
+                {
+                    return false;
+                }
+            }
+            return false;
         }
 
         /// <summary>
@@ -551,59 +687,6 @@ namespace KPEnhancedListview
             }
 
             return -1;
-        }
-
-        /// <summary>
-        /// Find Next ListView SubItem
-        /// </summary>
-        /// <param name="SubItem">SubItem to find next for</param>
-        /// <returns>SubItem index</returns>
-        private int GetNextSubItemFor(int SubItem)
-        {
-            int[] order = GetColumnOrder();
-
-            int nextSubItem = 0;
-
-            for (int i = m_clveEntries.Columns[SubItem].DisplayIndex; i < order.Length - 1; i++)
-            {
-                if (order[i] == SubItem)
-                {
-                    if (m_clveEntries.Columns[order[i + 1]].Width > 0)
-                    {
-                        nextSubItem = i + 1;
-                        break;
-                    }
-                    else
-                    {
-
-                        SubItem = order[i + 1];
-                    }
-                }
-            }
-
-            return order[nextSubItem];
-        }
-
-        /// <summary>
-        /// Retrieve the order in which columns appear
-        /// </summary>
-        /// <returns>Current display order of column indices</returns>
-        private int[] GetColumnOrder()
-        {
-            IntPtr lPar = Marshal.AllocHGlobal(Marshal.SizeOf(typeof(int)) * m_clveEntries.Columns.Count);
-
-            IntPtr res = SendMessage(m_clveEntries.Handle, LVM_GETCOLUMNORDERARRAY, new IntPtr(m_clveEntries.Columns.Count), lPar);
-            if (res.ToInt32() == 0)	// Something went wrong
-            {
-                Marshal.FreeHGlobal(lPar);
-                return null;
-            }
-
-            int[] order = new int[m_clveEntries.Columns.Count];
-            Marshal.Copy(lPar, order, 0, m_clveEntries.Columns.Count);
-            Marshal.FreeHGlobal(lPar);
-
-            return order;
         }
 
         /// <summary>
@@ -667,6 +750,65 @@ namespace KPEnhancedListview
             return subItemRect;
         }
 
+        /// <summary>
+        /// Find Next ListView SubItem
+        /// </summary>
+        /// <param name="SubItem">SubItem to find next for</param>
+        /// <returns>SubItem index</returns>
+        private int GetNextSubItemFor(int SubItem)
+        {
+            int[] order = GetColumnOrder();
+
+            int nextSubItem = 0;
+
+            for (int i = m_clveEntries.Columns[SubItem].DisplayIndex; i < order.Length - 1; i++)
+            {
+                if (order[i] == SubItem)
+                {
+                    if (m_clveEntries.Columns[order[i + 1]].Width > 0)
+                    {
+                        nextSubItem = i + 1;
+                        break;
+                    }
+                    else
+                    {
+
+                        SubItem = order[i + 1];
+                    }
+                }
+            }
+
+            return order[nextSubItem];
+        }
+
+        // ListView messages constants
+        private const int LVM_FIRST = 0x1000;
+        private const int LVM_GETCOLUMNORDERARRAY = (LVM_FIRST + 59);
+        // ListView send message
+        [DllImport("user32.dll")]
+        private static extern IntPtr SendMessage(IntPtr hWnd, int msg, IntPtr wPar, IntPtr lPar);
+        /// <summary>
+        /// Retrieve the order in which columns appear
+        /// </summary>
+        /// <returns>Current display order of column indices</returns>
+        private int[] GetColumnOrder()
+        {
+            IntPtr lPar = Marshal.AllocHGlobal(Marshal.SizeOf(typeof(int)) * m_clveEntries.Columns.Count);
+
+            IntPtr res = SendMessage(m_clveEntries.Handle, LVM_GETCOLUMNORDERARRAY, new IntPtr(m_clveEntries.Columns.Count), lPar);
+            if (res.ToInt32() == 0)	// Something went wrong
+            {
+                Marshal.FreeHGlobal(lPar);
+                return null;
+            }
+
+            int[] order = new int[m_clveEntries.Columns.Count];
+            Marshal.Copy(lPar, order, 0, m_clveEntries.Columns.Count);
+            Marshal.FreeHGlobal(lPar);
+
+            return order;
+        }
+
         private void SetEditBox(PaddedTextBox c, Rectangle rcSubItem, int SubItem)
         {
             if (rcSubItem.X < 0)
@@ -683,18 +825,15 @@ namespace KPEnhancedListview
             }
 
             // Calculate editbox height
-#if USE_NET20
             if (c.Lines.Length > 1)
-#else
-              if (c.Lines.Count() > 1)
-#endif
             {
+#if USE_LS
                 // For linespacing equal listview
-                //rcSubItem.Height *= c.Lines.Count();
+                rcSubItem.Height *= c.Lines.Count();
 
                 // For linespacing equal singlespacing
                 //rcSubItem.Height = rcSubItem.Height + c.Lines.Count() * /*~*/ 8;
-
+#endif
                 // Always display 3 lines
                 rcSubItem.Height *= 3;
 
@@ -749,30 +888,31 @@ namespace KPEnhancedListview
             if (m_clveEntries.Focused)
             {
                 // list view gets focus - save
-                EndEditing(true);
+                EndEditing(_editingControl, _editItem, _editSubItem, true);
             }
             else
             {
                 // focus is gone away - cancel
-                EndEditing(false);
+                EndEditing(_editingControl, _editItem, _editSubItem, false);
             }
         }
 
         private void _editControl_KeyPress(object sender, System.Windows.Forms.KeyPressEventArgs e)
         {
+            // TODO PasswordChar *** during editing for protected strings ???
             switch (e.KeyChar)
             {
                 case (char)(int)Keys.Escape:
                     {
                         // Close and cancel
-                        EndEditing(false);
+                        EndEditing(_editingControl, _editItem, _editSubItem, false);
                         break;
                     }
 
                 case (char)(int)Keys.Enter:
                     {
                         // Close and save
-                        EndEditing(true);
+                        EndEditing(_editingControl, _editItem, _editSubItem, true);
                         break;
                     }
 
@@ -783,8 +923,12 @@ namespace KPEnhancedListview
                         ListViewItem Item = _editItem;
                         int SubItem = GetNextSubItemFor(_editSubItem);
 
-                        EndEditing(true);
-                        StartEditing(m_textBoxComment, Item, SubItem);
+                        EndEditing(_editingControl, _editItem, _editSubItem, true);
+
+                        if (m_clveEntries.SelectedIndices.Count > 0)
+                        {
+                            StartEditing(m_textBoxComment, m_clveEntries.SelectedItems[0], SubItem);
+                        }
 
                         break;
                     }
@@ -804,7 +948,7 @@ namespace KPEnhancedListview
                             ListViewItem Item = _editItem;
                             int SubItem = GetNextSubItemFor(_editSubItem);
 
-                            EndEditing(true);
+                            EndEditing(_editingControl, _editItem, _editSubItem, true);
 
                             StartEditing(m_textBoxComment, Item, SubItem);
                         }
@@ -816,7 +960,7 @@ namespace KPEnhancedListview
                             ListViewItem Item = _editItem;
                             int SubItem = GetNextSubItemFor(_editSubItem);
 
-                            EndEditing(true);
+                            EndEditing(_editingControl, _editItem, _editSubItem, true);
 
                             StartEditing(m_textBoxComment, Item, SubItem);
                         }
