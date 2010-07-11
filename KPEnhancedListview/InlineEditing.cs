@@ -272,6 +272,10 @@ namespace KPEnhancedListview
             Util.EnsureVisibleEntry(m_clveEntries, ((PwEntry)Item.Tag).Uuid);
 
             // Set MultiLine property
+            // TODO KeePass 2.11
+            c.Multiline = false;
+            c.ReadOnly = true;
+#if false
             switch ((AppDefs.ColumnId)SubItem)
             {
                 case AppDefs.ColumnId.Title:
@@ -322,10 +326,14 @@ namespace KPEnhancedListview
                     }
                     break;
             }
-
+#endif
             // Read SubItem text and set textbox property
             // TODO PasswordChar *** during editing for protected strings ???
-            c.Text = Util.StringToMultiLine(ReadEntry(Item, SubItem), SubItem);
+
+            // TODO KeePass 2.11
+            c.Text = Item.SubItems[SubItem].Text;
+            //c.Text = Util.StringToMultiLine(ReadEntry(Item, SubItem), SubItem);
+
             c.ScrollToTop();
             c.SelectAll();
 
@@ -460,6 +468,8 @@ namespace KPEnhancedListview
                 return string.Empty;
             }
 
+            // TODO KeePass 2.11
+#if false
             switch ((AppDefs.ColumnId)SubItem)
             {
                 case AppDefs.ColumnId.Title:
@@ -522,6 +532,7 @@ namespace KPEnhancedListview
 
                     break;
             }
+#endif
             return str;
         }
 
@@ -540,6 +551,9 @@ namespace KPEnhancedListview
               Text = Text.Replace("\r", string.Empty);
 #endif
 
+            // TODO KeePass 2.11
+            // Saving is not implemented yet
+#if false
             switch ((AppDefs.ColumnId)SubItem)
             {
                 case AppDefs.ColumnId.Title:
@@ -587,6 +601,7 @@ namespace KPEnhancedListview
                     //}
                     break;
             }
+#endif
 
             if (pe.EqualsEntry(peInit, false, true, true, false, true))
             {

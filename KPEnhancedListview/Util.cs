@@ -124,6 +124,7 @@ namespace KPEnhancedListview
         // Multiline string to oneline string
         internal static string StringToOneLine(string Text, int SubItem)
         {
+#if false
             switch ((AppDefs.ColumnId)SubItem)
             {
                 case AppDefs.ColumnId.Title:
@@ -143,11 +144,15 @@ namespace KPEnhancedListview
                     // Keepass specific
                     return Text.Replace("\r", string.Empty).Replace("\n", " ");
             }
+#endif
+            // TODO KeePass 2.11
+            return Text;
         }
 
         // String to multiline string
         internal static string StringToMultiLine(string Text, int SubItem)
         {
+#if false
             switch ((AppDefs.ColumnId)SubItem)
             {
                 case AppDefs.ColumnId.Title:
@@ -172,6 +177,10 @@ namespace KPEnhancedListview
                       return Text.Replace("\r", "\r\n").Replace("\n", "\r\n").Replace("\r\n\r\n", "\r\n");
 #endif
             }
+#endif
+            // TODO KeePass 2.11
+            //if ( SubItem == AppDefs.ColumnIdnNotes)
+            return Text;
         }
 
         // Adapted from KeePass
