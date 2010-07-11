@@ -18,11 +18,11 @@ namespace KPEnhancedListview
     /// <summary>
     /// Padded TextBox
     /// </summary>
-    internal class PaddedTextBox : UserControl
+    public class PaddedTextBox : UserControl
     {
 #if USE_RTB
         //public RichTextBox tb;
-        public MultilineTextBox tb;
+        public MultilineRichTextBox tb;
 #else
         //public TextBox tb;
         public MultilineTextBox tb;
@@ -95,7 +95,7 @@ namespace KPEnhancedListview
         {
 #if USE_RTB
             //this.tb = new RichTextBox();
-            this.tb = new MultilineTextBox();
+            this.tb = new MultilineRichTextBox();
 #else
             //this.tb = new TextBox();
             this.tb = new MultilineTextBox();
@@ -109,7 +109,7 @@ namespace KPEnhancedListview
 #if USE_RTB
             this.tb.ScrollBars = RichTextBoxScrollBars.None;
 #else
-            this.tb.ScrollBars = System.Windows.Forms.ScrollBars.None;
+            this.tb.ScrollBars = ScrollBars.None;
 #endif
             this.tb.Enabled = true;
             this.tb.ReadOnly = false;
@@ -198,7 +198,7 @@ namespace KPEnhancedListview
 #if USE_RTB
                 this.tb.ScrollBars = RichTextBoxScrollBars.Vertical;
 #else
-                this.tb.ScrollBars = System.Windows.Forms.ScrollBars.Vertical;
+                this.tb.ScrollBars = ScrollBars.Vertical;
 #endif
             }
             else
@@ -206,7 +206,7 @@ namespace KPEnhancedListview
 #if USE_RTB
                 this.tb.ScrollBars = RichTextBoxScrollBars.None;
 #else
-                this.tb.ScrollBars = System.Windows.Forms.ScrollBars.None;
+                this.tb.ScrollBars = ScrollBars.None;
 #endif
             }
         }
@@ -235,7 +235,6 @@ namespace KPEnhancedListview
         /// Set the line spacing of the rich text box
         /// </summary>
 #if USE_RTB
-#if USE_LS
         public void LineSpacing(int ls)
         {
             PARAFORMAT2 fmt = new PARAFORMAT2();
@@ -257,7 +256,6 @@ namespace KPEnhancedListview
             //1 (SCF_SELECTION) - formatting will be applied only to selected text.
             SendMessage(this.tb.Handle, EM_SETPARAFORMAT, 4, ref fmt);
         }
-#endif
 #endif
 
         private void _tb_KeyPress(object sender, KeyPressEventArgs e)
@@ -301,5 +299,96 @@ namespace KPEnhancedListview
 
             return base.ProcessDialogKey(keyData);
         }
+
+
+#if USE_RTB
+    public class MultilineRichTextBox : RichTextBox
+    {
+        private bool hasMouse = false;
+
+        public MultilineRichTextBox()
+        {
+            InitializeComponent();
+        }
+
+        private void InitializeComponent()
+        {
+            this.MouseHover += new EventHandler(this.OnMouseHover);
+            this.MouseLeave += new EventHandler(this.OnMouseLeave);
+        }
+
+        private void OnMouseHover(object sender, EventArgs e)
+        {
+            hasMouse = true;
+        }
+
+        private void OnMouseLeave(object sender, EventArgs e)
+        {
+            hasMouse = false;
+        }
+
+        protected override void WndProc(ref Message m)
+        {
+            // Mouse over TextBox
+            if (!hasMouse)
+            {
+                // Pass WM_MOUSEWHEEL to parent
+                if (m.Msg == 0x020a)
+                {
+                    SendMessage(this.Parent.Handle, m.Msg, m.WParam, m.LParam);
+                    m.Result = (IntPtr)0;
+                }
+                else base.WndProc(ref m);
+            }
+            else base.WndProc(ref m);
+        }
+        [DllImport("user32.dll", CharSet = CharSet.Auto)]
+        private static extern IntPtr SendMessage(IntPtr hWnd, int msg, IntPtr wp, IntPtr lp);
+    }
+#else
+        public class MultilineTextBox : TextBox
+        {
+            private bool hasMouse = false;
+
+            public MultilineTextBox()
+            {
+                InitializeComponent();
+            }
+
+            private void InitializeComponent()
+            {
+                this.MouseHover += new EventHandler(this.OnMouseHover);
+                this.MouseLeave += new EventHandler(this.OnMouseLeave);
+            }
+
+            private void OnMouseHover(object sender, EventArgs e)
+            {
+                hasMouse = true;
+            }
+
+            private void OnMouseLeave(object sender, EventArgs e)
+            {
+                hasMouse = false;
+            }
+
+            protected override void WndProc(ref Message m)
+            {
+                // Mouse over TextBox
+                if (!hasMouse)
+                {
+                    // Pass WM_MOUSEWHEEL to parent
+                    if (m.Msg == 0x020a)
+                    {
+                        SendMessage(this.Parent.Handle, m.Msg, m.WParam, m.LParam);
+                        m.Result = (IntPtr)0;
+                    }
+                    else base.WndProc(ref m);
+                }
+                else base.WndProc(ref m);
+            }
+            [DllImport("user32.dll", CharSet = CharSet.Auto)]
+            private static extern IntPtr SendMessage(IntPtr hWnd, int msg, IntPtr wp, IntPtr lp);
+        }
+#endif
     }
 }
