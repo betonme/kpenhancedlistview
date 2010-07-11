@@ -129,7 +129,8 @@ namespace KPEnhancedListview
             InitializeAddEntry();
 
             // Initialize Custom columns
-            InitializeCustomColumns();
+            // TODO KeePass 2.11
+            //InitializeCustomColumns();
 
             // Tell windows we are interested in drawing items in ListBox on our own
             m_clveEntries.OwnerDraw = true;
@@ -170,7 +171,8 @@ namespace KPEnhancedListview
             TerminateAddEntry();
 
             // Undo Initialize
-            TerminateCustomColumns();
+            // TODO KeePass 2.11
+            //TerminateCustomColumns();
         }
 
         //
@@ -186,6 +188,8 @@ namespace KPEnhancedListview
         {           
             // CustomColumns
             // Should be not necessary only to avoid issues
+            // TODO KeePass 2.11
+#if false
             if (m_lCustomColumns.Count != 0)
             {
                 //if (m_clveEntries.Items.Count != 0)
@@ -207,7 +211,7 @@ namespace KPEnhancedListview
                     }
                 }
             }
-            
+#endif            
             // Inline Editing
             if (_editingControl != null)
             {
