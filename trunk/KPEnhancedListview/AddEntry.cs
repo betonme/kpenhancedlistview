@@ -27,7 +27,8 @@ namespace KPEnhancedListview
         {
             // Add menu item
             m_tsmiAddEntry = new ToolStripMenuItem();
-            m_tsmiAddEntry.Text = "Double Click add an Entry";
+            m_tsmiAddEntry.Text = "Add Entry";
+            m_tsmiAddEntry.ToolTipText = "Opens the new entry dialog on double click in empty listview area";
             m_tsmiAddEntry.Click += OnMenuAddEntry;
             m_tsMenu.Add(m_tsmiAddEntry);
 

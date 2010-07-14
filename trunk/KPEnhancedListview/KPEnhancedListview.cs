@@ -128,10 +128,6 @@ namespace KPEnhancedListview
             // Initialize add new entry on double click function
             InitializeAddEntry();
 
-            // Initialize Custom columns
-            // TODO KeePass 2.11
-            //InitializeCustomColumns();
-
             // Tell windows we are interested in drawing items in ListBox on our own
             m_clveEntries.OwnerDraw = true;
             m_clveEntries.DrawItem += new DrawListViewItemEventHandler(this.DrawItemHandler);
@@ -169,10 +165,6 @@ namespace KPEnhancedListview
 
             // AddEntry
             TerminateAddEntry();
-
-            // Undo Initialize
-            // TODO KeePass 2.11
-            //TerminateCustomColumns();
         }
 
         //
@@ -185,33 +177,7 @@ namespace KPEnhancedListview
         }
 
         private void DrawItemHandler(object sender, DrawListViewItemEventArgs e)
-        {           
-            // CustomColumns
-            // Should be not necessary only to avoid issues
-            // TODO KeePass 2.11
-#if false
-            if (m_lCustomColumns.Count != 0)
-            {
-                //if (m_clveEntries.Items.Count != 0)
-                {
-                    //if (m_clveEntries.Items[0].SubItems.Count != m_clveEntries.Columns.Count)
-                    //if (m_clveEntries.Items[m_clveEntries.Items.Count-1].SubItems.Count != m_clveEntries.Columns.Count)
-//TODO update and sort very slow ???
-// TODO cancel criterias ?                   
-                    if (e.Item.SubItems.Count != m_lCustomColumns.Count) //m_clveEntries.Columns.Count)
-                    {
-                        // Stable but slow
-                        UpdateListView();
-
-                        // Faster but it flickrs
-                        //UpdateListViewItem(e.Item);
-
-                        // Done during UpdateListView
-                        //SortListView();
-                    }
-                }
-            }
-#endif            
+        {                 
             // Inline Editing
             if (_editingControl != null)
             {

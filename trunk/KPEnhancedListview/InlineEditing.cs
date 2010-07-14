@@ -69,6 +69,7 @@ namespace KPEnhancedListview
             // Add menu item
             m_tsmiInlineEditing = new ToolStripMenuItem();
             m_tsmiInlineEditing.Text = "Inline Editing";
+            m_tsmiInlineEditing.ToolTipText = "Allows entry editing within the listview";
             m_tsmiInlineEditing.Click += OnMenuInlineEditing;
             m_tsMenu.Add(m_tsmiInlineEditing);
 
@@ -271,69 +272,71 @@ namespace KPEnhancedListview
 
             Util.EnsureVisibleEntry(m_clveEntries, ((PwEntry)Item.Tag).Uuid);
 
-            // Set MultiLine property
-            // TODO KeePass 2.11
-            c.Multiline = false;
-            c.ReadOnly = true;
-#if false
-            switch ((AppDefs.ColumnId)SubItem)
+            int colID = SubItem;
+            AceColumn col = Util.GetAceColumn(colID);
+            AceColumnType colType = col.Type;
+
+            // Set Multiline property
+            switch (colType)
             {
-                case AppDefs.ColumnId.Title:
-                case AppDefs.ColumnId.UserName:
-                case AppDefs.ColumnId.Password:
-                case AppDefs.ColumnId.Url:
-                case AppDefs.ColumnId.CreationTime:
-                case AppDefs.ColumnId.LastAccessTime:
-                case AppDefs.ColumnId.LastModificationTime:
-                case AppDefs.ColumnId.ExpiryTime:
-                case AppDefs.ColumnId.Uuid:
-                case AppDefs.ColumnId.Attachment:
-                    c.Multiline = false;
-#if USE_LS
-                    c.LineSpacing(20); // Single spacing
-#endif
-                    break;
-                case AppDefs.ColumnId.Notes:
-                default:
+                case AceColumnType.Notes:
+                case AceColumnType.CustomString:
                     c.Multiline = true;
 #if USE_LS
                     c.LineSpacing(27); //26 ok); // Spacing equal listview item height
 #endif
                     break;
+                case AceColumnType.PluginExt:
+                    //TODO
+                    c.Multiline = false;
+#if USE_LS
+                    c.LineSpacing(20); // Single spacing
+#endif
+                    break;
+                default:
+                    c.Multiline = false;
+#if USE_LS
+                    c.LineSpacing(20); // Single spacing
+#endif
+                    break;
             }
 
             // Set editing allowed
-            switch ((AppDefs.ColumnId)SubItem)
+            switch (colType)
             {
-                case AppDefs.ColumnId.CreationTime:
-                case AppDefs.ColumnId.LastAccessTime:
-                case AppDefs.ColumnId.LastModificationTime:
-                case AppDefs.ColumnId.ExpiryTime:
-                case AppDefs.ColumnId.Uuid:
-                case AppDefs.ColumnId.Attachment:
+                case AceColumnType.CreationTime: 
+                case AceColumnType.LastAccessTime: 
+                case AceColumnType.LastModificationTime: 
+                case AceColumnType.ExpiryTime:
+                case AceColumnType.Uuid:
+                case AceColumnType.Attachment:
+                case AceColumnType.ExpiryTimeDateOnly:
+                case AceColumnType.Size:
+                case AceColumnType.HistoryCount:
                     // No editing allowed
+                    c.ReadOnly = true;
+                    break;
+                case AceColumnType.PluginExt:
+                    //TODO No editing allowed
                     c.ReadOnly = true;
                     break;
                 default:
                     // Editing allowed
-                    try
-                    {
-                        c.ReadOnly = m_lCustomColumns[SubItem].ReadOnly;
-                    }
-                    catch
-                    {
-                        c.ReadOnly = false;
-                    }
+                    c.ReadOnly = false;
                     break;
             }
-#endif
+
             // Read SubItem text and set textbox property
             // TODO PasswordChar *** during editing for protected strings ???
+            
+            PwEntry pe = (((ListViewItem)Item).Tag as PwEntry);
 
-            // TODO KeePass 2.11
-            c.Text = Item.SubItems[SubItem].Text;
-            //c.Text = Util.StringToMultiLine(ReadEntry(Item, SubItem), SubItem);
-
+#if USE_RTB
+            // Read entry
+            c.Text = Util.GetEntryFieldEx(pe, SubItem);
+#else
+            c.Text = Util.StringToMultiLine(Util.GetEntryFieldEx(pe, SubItem), SubItem);
+#endif
             c.ScrollToTop();
             c.SelectAll();
 
@@ -408,7 +411,7 @@ namespace KPEnhancedListview
                 if (_editItem.SubItems[SubItem].Text != c.Text)
                 {
                     // Save changes
-                    AcceptChanges = SaveEntry(Item, SubItem, c.Text);
+                    AcceptChanges = Util.SaveEntry(m_host.Database, Item, SubItem, c.Text);
 
                     // Avoid flickering
                     // Set item text manually before calling RefreshEntriesList
@@ -416,7 +419,11 @@ namespace KPEnhancedListview
                     if (!_editItem.SubItems[_editSubItem].Text.Equals(PwDefs.HiddenPassword))
                     {
                         // Updating the listview item
+#if USE_RTB
+                        _editItem.SubItems[_editSubItem].Text = _editingControl.Text;
+#else
                         _editItem.SubItems[_editSubItem].Text = Util.StringToOneLine(_editingControl.Text, _editSubItem);
+#endif
                     }
                 }
                 else
@@ -453,170 +460,6 @@ namespace KPEnhancedListview
             //m_host.MainWindow.UIStateUpdated += new EventHandler(OnPwListCustomColumnUpdate);
 
             mutEdit.ReleaseMutex();
-        }
-
-
-        private string ReadEntry(ListViewItem Item, int SubItem)
-        {
-            string str = null;
-
-            PwEntry pe = (PwEntry)Item.Tag;
-            pe = m_host.Database.RootGroup.FindEntry(pe.Uuid, true);
-
-            if (pe == null)
-            {
-                return string.Empty;
-            }
-
-            // TODO KeePass 2.11
-#if false
-            switch ((AppDefs.ColumnId)SubItem)
-            {
-                case AppDefs.ColumnId.Title:
-                    //if(PwDefs.IsTanEntry(pe))
-                    //TODO tan list	 TanTitle ?? 
-                    //else
-                    str = pe.Strings.Get(PwDefs.TitleField).ReadString();
-                    break;
-                case AppDefs.ColumnId.UserName:
-                    str = pe.Strings.Get(PwDefs.UserNameField).ReadString();
-                    break;
-                case AppDefs.ColumnId.Password:
-                    str = pe.Strings.Get(PwDefs.PasswordField).ReadString();
-                    break;
-                case AppDefs.ColumnId.Url:
-                    str = pe.Strings.Get(PwDefs.UrlField).ReadString();
-                    break;
-                case AppDefs.ColumnId.Notes:
-                    str = pe.Strings.Get(PwDefs.NotesField).ReadString();
-                    break;
-                case AppDefs.ColumnId.CreationTime:
-                    str = TimeUtil.ToDisplayString(pe.CreationTime);
-                    break;
-                case AppDefs.ColumnId.LastAccessTime:
-                    str = TimeUtil.ToDisplayString(pe.LastAccessTime);
-                    break;
-                case AppDefs.ColumnId.LastModificationTime:
-                    str = TimeUtil.ToDisplayString(pe.LastModificationTime);
-                    break;
-                case AppDefs.ColumnId.ExpiryTime:
-                    str = TimeUtil.ToDisplayString(pe.ExpiryTime);
-                    break;
-                case AppDefs.ColumnId.Uuid:
-                    str = pe.Uuid.ToHexString();
-                    break;
-                case AppDefs.ColumnId.Attachment:
-                    str = pe.Binaries.KeysToString();
-                    break;
-                default:
-                    //MessageBox.Show(m_lCustomColumns[SubItem].Column.ToString());
-                    //if (pe.Strings.Exists(m_clveEntries.Columns[SubItem].Text))
-                    try
-                    {
-                        if (pe.Strings.Exists(m_lCustomColumns[SubItem].Column))
-                        {
-                            //str = pe.Strings.Get(m_clveEntries.Columns[SubItem].Text).ReadString();
-                            str = pe.Strings.Get(m_lCustomColumns[SubItem].Column).ReadString();
-                        }
-                        else
-                        {
-                            // SubItem does not exist
-                            str = string.Empty; //Item.SubItems[SubItem].Text;
-                        }
-                    }
-                    catch
-                    {
-                        // SubItem does not exist
-                        str = string.Empty; //Item.SubItems[SubItem].Text;
-                    }
-
-                    break;
-            }
-#endif
-            return str;
-        }
-
-        private bool SaveEntry(ListViewItem Item, int SubItem, string Text)
-        {
-            PwEntry pe = (PwEntry)Item.Tag;
-            pe = m_host.Database.RootGroup.FindEntry(pe.Uuid, true);
-
-            PwEntry peInit = pe.CloneDeep();
-
-            pe.CreateBackup();
-
-            pe.Touch(true, false); // Touch *after* backup
-
-#if !USE_RTB
-              Text = Text.Replace("\r", string.Empty);
-#endif
-
-            // TODO KeePass 2.11
-            // Saving is not implemented yet
-#if false
-            switch ((AppDefs.ColumnId)SubItem)
-            {
-                case AppDefs.ColumnId.Title:
-                    //if(PwDefs.IsTanEntry(pe))
-                    //TODO tan list	 TanTitle ???		    pe.Strings.Set(PwDefs.TanTitle, new ProtectedString(false, Text));
-                    //else
-                    pe.Strings.Set(PwDefs.TitleField, new ProtectedString(m_host.Database.MemoryProtection.ProtectTitle, Text));
-                    break;
-                case AppDefs.ColumnId.UserName:
-                    pe.Strings.Set(PwDefs.UserNameField, new ProtectedString(m_host.Database.MemoryProtection.ProtectUserName, Text));
-                    break;
-                case AppDefs.ColumnId.Password:
-                    pe.Strings.Set(PwDefs.PasswordField, new ProtectedString(m_host.Database.MemoryProtection.ProtectPassword, Text));
-                    break;
-                case AppDefs.ColumnId.Url:
-                    pe.Strings.Set(PwDefs.UrlField, new ProtectedString(m_host.Database.MemoryProtection.ProtectUrl, Text));
-                    break;
-                case AppDefs.ColumnId.Notes:
-                    pe.Strings.Set(PwDefs.NotesField, new ProtectedString(m_host.Database.MemoryProtection.ProtectNotes, Text));
-                    break;
-                case AppDefs.ColumnId.CreationTime:
-                case AppDefs.ColumnId.LastAccessTime:
-                case AppDefs.ColumnId.LastModificationTime:
-                case AppDefs.ColumnId.ExpiryTime:
-                case AppDefs.ColumnId.Uuid:
-                case AppDefs.ColumnId.Attachment:
-                    // Nothing todo
-                    break;
-                default:
-                    /*if (pe.Strings.Exists(m_clveEntries.Columns[SubItem].Text))
-                    {
-                        pe.Strings.Set(m_clveEntries.Columns[SubItem].Text, new ProtectedString(pe.Strings.Get(m_clveEntries.Columns[SubItem].Text).IsProtected, Text));
-                    }
-                    else
-                    {*/
-                        // SubItem does not exist
-                        try
-                        {
-                            pe.Strings.Set(m_clveEntries.Columns[SubItem].Text, new ProtectedString(m_lCustomColumns[SubItem].Protect, Text));
-                        }
-                        catch
-                        {
-                            pe.Strings.Set(m_clveEntries.Columns[SubItem].Text, new ProtectedString(false, Text));
-                        }
-                    //}
-                    break;
-            }
-#endif
-
-            if (pe.EqualsEntry(peInit, false, true, true, false, true))
-            {
-                pe.LastModificationTime = peInit.LastModificationTime;
-
-                pe.History.Remove(pe.History.GetAt(pe.History.UCount - 1)); // Undo backup
-
-                return false;
-            }
-            else
-            {
-                //UpdateSaveIcon();
-
-                return true;
-            }
         }
 
         ///<summary>
