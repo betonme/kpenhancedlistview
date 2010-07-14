@@ -124,63 +124,183 @@ namespace KPEnhancedListview
         // Multiline string to oneline string
         internal static string StringToOneLine(string Text, int SubItem)
         {
-#if false
-            switch ((AppDefs.ColumnId)SubItem)
+            int colID = SubItem;
+            AceColumn col = Util.GetAceColumn(colID);
+            AceColumnType colType = col.Type;
+            switch (colType)
             {
-                case AppDefs.ColumnId.Title:
-                case AppDefs.ColumnId.UserName:
-                case AppDefs.ColumnId.Password:
-                case AppDefs.ColumnId.Url:
-                case AppDefs.ColumnId.CreationTime:
-                case AppDefs.ColumnId.LastAccessTime:
-                case AppDefs.ColumnId.LastModificationTime:
-                case AppDefs.ColumnId.ExpiryTime:
-                case AppDefs.ColumnId.Uuid:
-                case AppDefs.ColumnId.Attachment:
-                    // No changes
-                    return Text;
-                case AppDefs.ColumnId.Notes:
-                default:
+                case AceColumnType.Notes:
+                case AceColumnType.CustomString:
                     // Keepass specific
-                    return Text.Replace("\r", string.Empty).Replace("\n", " ");
-            }
+#if USE_RTB   // RichTextBox \r \n \r\n
+                    // No changes
+#else         // TextBox needs \r\n
+                    Text = Text.Replace("\r", string.Empty).Replace("\n", " ");
 #endif
-            // TODO KeePass 2.11
+                    break;
+                default:
+                    // No changes
+                    break;
+            }
             return Text;
         }
 
         // String to multiline string
         internal static string StringToMultiLine(string Text, int SubItem)
         {
-#if false
-            switch ((AppDefs.ColumnId)SubItem)
+            int colID = SubItem;
+            AceColumn col = Util.GetAceColumn(colID);
+            AceColumnType colType = col.Type;
+            switch (colType)
             {
-                case AppDefs.ColumnId.Title:
-                case AppDefs.ColumnId.UserName:
-                case AppDefs.ColumnId.Password:
-                case AppDefs.ColumnId.Url:
-                case AppDefs.ColumnId.CreationTime:
-                case AppDefs.ColumnId.LastAccessTime:
-                case AppDefs.ColumnId.LastModificationTime:
-                case AppDefs.ColumnId.ExpiryTime:
-                case AppDefs.ColumnId.Uuid:
-                case AppDefs.ColumnId.Attachment:
-                    // No changes
-                    return Text;
-                case AppDefs.ColumnId.Notes:
-                default:
+                case AceColumnType.Notes:
+                case AceColumnType.CustomString:
                     // Keepass specific
                     // Use Environment.NewLine
 #if USE_RTB   // RichTextBox \r \n \r\n
-                    return Text;
+                    // No changes
 #else         // TextBox needs \r\n
-                      return Text.Replace("\r", "\r\n").Replace("\n", "\r\n").Replace("\r\n\r\n", "\r\n");
+                    Text = Text.Replace("\r", "\r\n").Replace("\n", "\r\n").Replace("\r\n\r\n", "\r\n");
 #endif
+                    break;
+                default:
+                    // No changes
+                    break;
             }
-#endif
-            // TODO KeePass 2.11
-            //if ( SubItem == AppDefs.ColumnIdnNotes)
             return Text;
+        }
+
+        // Adapted from KeePass because it is private
+        internal static string GetEntryFieldEx(PwEntry pe, int iColumnID)
+        {
+            List<AceColumn> l = Program.Config.MainWindow.EntryListColumns;
+            if ((iColumnID < 0) || (iColumnID >= l.Count)) { Debug.Assert(false); return string.Empty; }
+
+            AceColumn col = l[iColumnID];
+            if (col.HideWithAsterisks) return PwDefs.HiddenPassword;
+
+            string str = string.Empty;
+            switch (col.Type)
+            {
+                case AceColumnType.Title: str = pe.Strings.ReadSafe(PwDefs.TitleField); break;
+                case AceColumnType.UserName: str = pe.Strings.ReadSafe(PwDefs.UserNameField); break;
+                case AceColumnType.Password: str = pe.Strings.ReadSafe(PwDefs.PasswordField); break;
+                case AceColumnType.Url: str = pe.Strings.ReadSafe(PwDefs.UrlField); break;
+                case AceColumnType.Notes: str = pe.Strings.ReadSafe(PwDefs.NotesField); break;
+                case AceColumnType.CreationTime: str = TimeUtil.ToDisplayString(pe.CreationTime); break;
+                case AceColumnType.LastAccessTime: str = TimeUtil.ToDisplayString(pe.LastAccessTime); break;
+                case AceColumnType.LastModificationTime: str = TimeUtil.ToDisplayString(pe.LastModificationTime); break;
+                case AceColumnType.ExpiryTime:
+                    if (pe.Expires) str = TimeUtil.ToDisplayString(pe.ExpiryTime);
+                    else str = KPRes.NeverExpires; //m_strNeverExpiresText;
+                    break;
+                case AceColumnType.Uuid: str = pe.Uuid.ToHexString(); break;
+                case AceColumnType.Attachment: str = pe.Binaries.KeysToString(); break;
+                case AceColumnType.CustomString:
+                    str = pe.Strings.ReadSafe(col.CustomName);
+                    break;
+                case AceColumnType.PluginExt:
+                    str = Program.ColumnProviderPool.GetCellData(col.CustomName, pe);
+                    break;
+                case AceColumnType.OverrideUrl: str = pe.OverrideUrl; break;
+                case AceColumnType.Tags:
+                    str = StrUtil.TagsToString(pe.Tags, true);
+                    break;
+                case AceColumnType.ExpiryTimeDateOnly:
+                    if (pe.Expires) str = TimeUtil.ToDisplayStringDateOnly(pe.ExpiryTime);
+                    else str = KPRes.NeverExpires; //m_strNeverExpiresText;
+                    break;
+                case AceColumnType.Size:
+                    str = StrUtil.FormatDataSizeKB(pe.GetSize());
+                    break;
+                case AceColumnType.HistoryCount:
+                    str = pe.History.UCount.ToString();
+                    break;
+                default: Debug.Assert(false); break;
+            }
+
+            return str;
+        }
+
+        // Ported from KeePass Entry Dialog SaveEntry() and UpdateEntryStrings(...)
+        internal static bool SaveEntry(PwDatabase pwStorage, ListViewItem Item, int SubItem, string Text)
+        {
+            PwEntry pe = (PwEntry)Item.Tag;
+            pe = pwStorage.RootGroup.FindEntry(pe.Uuid, true);
+
+            PwEntry peInit = pe.CloneDeep();
+            pe.CreateBackup();
+            pe.Touch(true, false); // Touch *after* backup
+
+#if !USE_RTB
+            Text = Util.StringToOneLine(Text, SubItem);
+#endif
+
+            int colID = SubItem;
+            AceColumn col = Util.GetAceColumn(colID);
+            AceColumnType colType = col.Type;
+            switch (colType)
+            {
+                case AceColumnType.Title:
+                    //if(PwDefs.IsTanEntry(pe))
+                    //TODO tan list	 TanTitle ???		    pe.Strings.Set(PwDefs.TanTitle, new ProtectedString(false, Text));
+                    //else
+                    pe.Strings.Set(PwDefs.TitleField, new ProtectedString(pwStorage.MemoryProtection.ProtectTitle, Text));
+                    break;
+                case AceColumnType.UserName:
+                    pe.Strings.Set(PwDefs.UserNameField, new ProtectedString(pwStorage.MemoryProtection.ProtectUserName, Text));
+                    break;
+                case AceColumnType.Password:
+                    //byte[] pb = Text.ToUtf8();
+                    //pe.Strings.Set(PwDefs.PasswordField, new ProtectedString(pwStorage.MemoryProtection.ProtectPassword, pb));
+                    //MemUtil.ZeroByteArray(pb);
+                    pe.Strings.Set(PwDefs.PasswordField, new ProtectedString(pwStorage.MemoryProtection.ProtectPassword, Text));
+                    break;
+                case AceColumnType.Url:
+                    pe.Strings.Set(PwDefs.UrlField, new ProtectedString(pwStorage.MemoryProtection.ProtectUrl, Text));
+                    break;
+                case AceColumnType.Notes:
+                    pe.Strings.Set(PwDefs.NotesField, new ProtectedString(pwStorage.MemoryProtection.ProtectNotes, Text));
+                    break;
+                case AceColumnType.OverrideUrl:
+                    pe.OverrideUrl = Text;
+                    break;
+                case AceColumnType.Tags:
+                    List<string> vNewTags = StrUtil.StringToTags(Text);
+                    pe.Tags.Clear();
+                    foreach (string strTag in vNewTags) pe.AddTag(strTag);
+                    break;
+                case AceColumnType.CustomString:
+                    pe.Strings.Set(col.CustomName, new ProtectedString(pe.Strings.GetSafe(col.CustomName).IsProtected, Text));
+                    break;
+                default:
+                    // Nothing todo
+                    break;
+            }
+
+            if (pe.EqualsEntry(peInit, false, true, true, false, true))
+            {
+                pe.LastModificationTime = peInit.LastModificationTime;
+
+                pe.History.Remove(pe.History.GetAt(pe.History.UCount - 1)); // Undo backup
+
+                return false;
+            }
+            else
+            {
+                //UpdateSaveIcon();
+
+                return true;
+            }
+        }
+
+        // Adapted from KeePass because it is private
+        internal static AceColumn GetAceColumn(int nColID)
+        {
+            List<AceColumn> v = Program.Config.MainWindow.EntryListColumns;
+            if ((nColID < 0) || (nColID >= v.Count)) { Debug.Assert(false); return new AceColumn(); }
+
+            return v[nColID];
         }
 
         // Adapted from KeePass
@@ -207,8 +327,7 @@ namespace KPEnhancedListview
             return null;
         }
 
-        // Adapted from KeePass
-        /*
+        // Adapted from KeePass - actually not used
         public static void SelectEntries(CustomListViewEx clve, PwObjectList<PwEntry> lEntries, bool bDeselectOthers)
         {
             for (int i = 0; i < clve.Items.Count; ++i)
@@ -230,7 +349,7 @@ namespace KPEnhancedListview
                 if (bDeselectOthers && !bFound)
                     clve.Items[i].Selected = false;
             }
-        }*/
+        }
 
         // Adapted from KeePass
         internal static void SelectEntry(CustomListViewEx clve, PwEntry entry, bool bDeselectOthers)

@@ -21,6 +21,7 @@
     <TargetFrameworkVersion>v3.5</TargetFrameworkVersion>
     <TargetFrameworkSubset>
     </TargetFrameworkSubset>
+    <RunPostBuildEvent>OnBuildSuccess</RunPostBuildEvent>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <DebugSymbols>true</DebugSymbols>
@@ -57,20 +58,12 @@
     <Compile Include="AddEntry.cs" />
     <Compile Include="EventSuppressor.cs" />
     <Compile Include="InlineEditing.cs" />
-    <Compile Include="EnumPair.cs" />
     <Compile Include="MultilineTextBox.cs">
       <SubType>Component</SubType>
-    </Compile>
-    <Compile Include="Properties\Resources.Designer.cs">
-      <AutoGen>True</AutoGen>
-      <DesignTime>True</DesignTime>
-      <DependentUpon>Resources.resx</DependentUpon>
     </Compile>
     <Compile Include="Util.cs" />
     <Compile Include="PaddedTextbox.cs">
       <SubType>UserControl</SubType>
-    </Compile>
-    <Compile Include="InputBox.cs">
     </Compile>
     <Compile Include="KPEnhancedListview.cs">
     </Compile>
@@ -78,20 +71,6 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="app.config" />
-  </ItemGroup>
-  <ItemGroup>
-    <EmbeddedResource Include="Properties\Resources.resx">
-      <Generator>ResXFileCodeGenerator</Generator>
-      <LastGenOutput>Resources.Designer.cs</LastGenOutput>
-    </EmbeddedResource>
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="Resources\B48x48_Customcolumns.png" />
-  </ItemGroup>
-  <ItemGroup>
-    <Content Include="Resources\B16x16_CustomColumns.png" />
-    <Content Include="Resources\B16x16_Package_Settings.png" />
-    <Content Include="Resources\KeePass.ico" />
   </ItemGroup>
   <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
@@ -101,4 +80,24 @@
   <Target Name="AfterBuild">
   </Target>
   -->
+  <PropertyGroup>
+    <PostBuildEvent>md "$(TargetDir)..\$(ProjectName)"
+del /s /q "$(TargetDir)..\$(ProjectName)"
+copy "$(ProjectDir)*.cs" "$(TargetDir)..\$(ProjectName)\*.*"
+copy "$(ProjectDir)*.csproj" "$(TargetDir)..\$(ProjectName)\*.*"
+
+md "$(TargetDir)..\$(ProjectName)\Properties" 
+xcopy "$(ProjectDir)Properties" "$(TargetDir)..\$(ProjectName)\Properties" /e
+
+"$(TargetDir)KeePass.exe" --plgx-create "$(ProjectDir)Build\$(ProjectName)"  --plgx-prereq-kp:2.10 --plgx-prereq-net:3.5
+
+md "$(TargetDir)..\$(ProjectName)\Build"
+move "$(TargetDir)..\$(ProjectName).plgx" "$(TargetDir)..\$(ProjectName)\Build\$(ProjectName).plgx"
+copy "$(TargetDir)\*.*" "$(TargetDir)..\$(ProjectName)\Build\*.*"
+del "$(TargetDir)..\$(ProjectName)\Build\*.dll"
+del "$(TargetDir)$(ProjectName).plgx"
+</PostBuildEvent>
+    <PreBuildEvent>
+    </PreBuildEvent>
+  </PropertyGroup>
 </Project>
