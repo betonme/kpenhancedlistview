@@ -1,3 +1,4 @@
+#labels Featured
 =Problem Reporting=
 
 If there is still a problem:
@@ -5,4 +6,4 @@ If there is still a problem:
 
 To investigate the problem, it is easier if You can provide 
  * the detailed Error Message (Just Copy and Paste)
- * a screenshot (You may have to repaint it)
+ * a screenshot (Take account of passwords)
