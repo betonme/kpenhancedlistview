@@ -1,4 +1,4 @@
-﻿using System;
+ using System;
 using System.Text;
 using System.Diagnostics;
 using System.Windows;
@@ -73,7 +73,7 @@ namespace KPEnhancedListview
             m_tsmiAddEntry.Checked = !m_tsmiAddEntry.Checked;
 
             // save config
-            m_host.CustomConfig.SetBool(m_cfgInlineEditing, m_tsmiAddEntry.Checked);
+            m_host.CustomConfig.SetBool(m_cfgAddEntry, m_tsmiAddEntry.Checked);
 
             if (m_tsmiAddEntry.Checked)
             {
