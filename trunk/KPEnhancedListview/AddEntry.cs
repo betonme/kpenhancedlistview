@@ -1,4 +1,4 @@
- using System;
+﻿using System;
 using System.Text;
 using System.Diagnostics;
 using System.Windows;
@@ -17,96 +17,68 @@ namespace KPEnhancedListview
 {
     partial class KPEnhancedListviewExt
     {
-        private const string m_cfgAddEntry = "KPEnhancedListview_AddEntry";
-
-        private DateTime m_mouseDownForAeAt = DateTime.MinValue;
-
-        private ToolStripMenuItem m_tsmiAddEntry = null;
-
-        private void InitializeAddEntry()
+        public class KPEnhancedListviewAddEntry : KPEnhancedListviewBase
         {
-            // Add menu item
-            m_tsmiAddEntry = new ToolStripMenuItem();
-            m_tsmiAddEntry.Text = "Add Entry";
-            m_tsmiAddEntry.ToolTipText = "Opens the new entry dialog on double click in empty listview area";
-            m_tsmiAddEntry.Click += OnMenuAddEntry;
-            m_tsMenu.Add(m_tsmiAddEntry);
+            //////////////////////////////////////////////////////////////
+            // Sub Plugin setup
+            private const string m_tbText = "Add Entry";
+            private const string m_tbToolTip = "Opens the new entry dialog on double click in empty listview area";
+            protected const string m_cfgString = "KPEnhancedListview_AddEntry";
 
-            // Check custom config
-            if (m_host.CustomConfig.GetBool(m_cfgAddEntry, false))
+            public KPEnhancedListviewAddEntry()
             {
-                m_tsmiAddEntry.Checked = true;
-                AddHandlerAddEntry();
-            }
-            else
-            {
-                m_tsmiAddEntry.Checked = false;
-                RemoveHandlerAddEntry();
-            }
-        }
-
-        public void TerminateAddEntry()
-        {
-            // Remove our menu items
-            m_tsMenu.Remove(m_tsmiAddEntry);
-
-            RemoveHandlerAddEntry();
-        }
-
-        private void AddHandlerAddEntry()
-        {
-            m_clveEntries.MouseUp += new MouseEventHandler(this.OnMouseUp);
-        }
-
-        private void RemoveHandlerAddEntry()
-        {
-            m_clveEntries.MouseUp -= new MouseEventHandler(this.OnMouseUp);
-        }
-
-        private void OnMenuAddEntry(object sender, EventArgs e)
-        {
-            if (!m_host.Database.IsOpen)
-            {
-                // doesn't matter
+                AddMenu(m_cfgString, m_tbText, m_tbToolTip);
             }
 
-            m_tsmiAddEntry.Checked = !m_tsmiAddEntry.Checked;
-
-            // save config
-            m_host.CustomConfig.SetBool(m_cfgAddEntry, m_tsmiAddEntry.Checked);
-
-            if (m_tsmiAddEntry.Checked)
+            //////////////////////////////////////////////////////////////
+            // Sub Plugin handler registration
+            protected override void AddHandler()
             {
-                // enable function
-                AddHandlerAddEntry();
+                m_clveEntries.MouseUp += new MouseEventHandler(this.OnMouseUp);
             }
-            else
-            {
-                // disable function
-                RemoveHandlerAddEntry();
-            }
-        }
 
-        private void OnMouseUp(object sender, MouseEventArgs e)
-        {
-            // Only allow left mouse button
-            if (e.Button == MouseButtons.Left)
+            protected override void RemoveHandler()
             {
-                ListViewItem item;
-                int idx = GetSubItemAt(e.X, e.Y, out item);
-                if (idx == -1)
+                m_clveEntries.MouseUp -= new MouseEventHandler(this.OnMouseUp);
+            }
+
+            //////////////////////////////////////////////////////////////
+            // Sub Plugin functionality
+            private DateTime m_mouseDownForAeAt = DateTime.MinValue;
+
+            private void OnMouseUp(object sender, MouseEventArgs e)
+            {
+                // Only allow left mouse button
+                if (e.Button == MouseButtons.Left)
                 {
-                    // No item was clicked
-                    long datNow = DateTime.Now.Ticks;
-                    long datMouseDown = m_mouseDownForAeAt.Ticks;
-
-                    // Fast double clicking with the left moaus button
-                    if (datNow - datMouseDown < m_mouseTimeMin)
+                    ListViewItem item;
+                    int idx = Util.GetSubItemAt(m_clveEntries, e.X, e.Y, out item);
+                    if (idx == -1)
                     {
-                        // KeePass has no define or constant for the add entry keystroke
-                        SendKeys.Send("{INSERT}");
+                        for (int y = e.Y + 1; y < 100; y++)
+                        {
+                            idx = Util.GetSubItemAt(m_clveEntries, e.X, y, out item);
+                            if (idx != -1)
+                            {
+                                break;
+                            }
+                        }
+                        if (idx == -1)
+                        {
+                            // No item was clicked
+                            long datNow = DateTime.Now.Ticks;
+                            long datMouseDown = m_mouseDownForAeAt.Ticks;
+
+                            // Detect fast double clicking with the left mouse button
+                            if (datNow - datMouseDown < m_mouseTimeMin)
+                            {
+                                // Double click detected
+                                // KeePass has no define or constant for the add entry keystroke
+                                SendKeys.Send("{INSERT}");
+                            }
+                            m_mouseDownForAeAt = DateTime.Now;
+                        }
                     }
-                    m_mouseDownForAeAt = DateTime.Now;
                 }
             }
         }
