@@ -54,16 +54,18 @@ using KeePassLib.Utility;
 namespace KPEnhancedListview
 {
     /// <summary>
-    /// This is the main plugin class. It must be named exactly
-    /// like the namespace and must be derived from
-    /// <c>KeePassPlugin</c>.
+    /// This is the main plugin class. 
+    /// It should be named something like the namespace+Ext and 
+    /// must be derived from
+    /// <c>KeePass.Plugin</c>.
     /// </summary>
     public sealed partial class KPEnhancedListviewExt : Plugin
     {
         // The plugin remembers its host in this variable.
-        private IPluginHost m_host = null;
-        
-        ToolStripItemCollection m_tsMenu = null;
+        public static IPluginHost m_host = null;
+
+        public static ToolStripItemCollection m_tsMenu = null;
+        public static ToolStripMenuItem m_tsPopup = null;
 
         private ToolStripSeparator m_tsSeparator = null;
 
@@ -72,8 +74,8 @@ namespace KPEnhancedListview
         //private const string m_ctveName = "m_tvGroups";
         //private const string m_csceName = "m_splitVertical";
 
-        private CustomToolStripEx m_ctseToolMain = null;
-        private CustomListViewEx m_clveEntries = null;
+        public static CustomToolStripEx m_ctseToolMain = null;
+        public static CustomListViewEx m_clveEntries = null;
         //private CustomTreeViewEx m_ctveGroups = null;
         //private CustomSplitContainerEx m_csceSplitVertical = null;
 
@@ -108,31 +110,34 @@ namespace KPEnhancedListview
             m_tsSeparator = new ToolStripSeparator();
             m_tsMenu.Add(m_tsSeparator);
 
+            m_tsPopup = new ToolStripMenuItem();
+            m_tsPopup.Text = "KPEnhancedListview";
+            //m_tsMenu.ToolTipText = tbToolTip;
+            m_tsMenu.Add(m_tsPopup);
+            
             // We want a notification when the user tried to save the current database
             m_host.MainWindow.FileSaved += OnFileSaved;
 
             // Find the listview control 
             m_ctseToolMain = (CustomToolStripEx)Util.FindControlRecursive(m_host.MainWindow, m_ctseName);
             m_clveEntries = (CustomListViewEx)Util.FindControlRecursive(m_host.MainWindow, m_clveName);
-            //m_tsmiMenuView = (ToolStripMenuItem)KPELVUtil.FindControlRecursive(m_host.MainWindow, m_tsmiName);
-            //m_ctveGroups = (CustomTreeViewEx)FindControlRecursive(m_host.MainWindow, m_ctveName);
-            //m_csceSplitVertical = (CustomSplitContainerEx)FindControlRecursive(m_host.MainWindow, m_csceName);
+            //m_tsmiMenuView = (ToolStripMenuItem)Util.FindControlRecursive(m_host.MainWindow, m_tsmiName);
+            //m_ctveGroups = (CustomTreeViewEx)Util.FindControlRecursive(m_host.MainWindow, m_ctveName);
+            //m_csceSplitVertical = (CustomSplitContainerEx)Util.FindControlRecursive(m_host.MainWindow, m_csceName);
 
             // Initialize EventSuppressor
             m_evEntries = new EventSuppressor(m_clveEntries);
             //m_evMainWindow = new EventSuppressor(m_host.MainWindow); //(Control)this);//(Control)m_host.MainWindow);
 
             // Initialize Inline Editing
-            InitializeInlineEditing();
+            //InitializeInlineEditing();
+            new KPEnhancedListviewInlineEditing();
 
             // Initialize add new entry on double click function
-            InitializeAddEntry();
+            //InitializeAddEntry();
+            new KPEnhancedListviewAddEntry();
 
-            // Tell windows we are interested in drawing items in ListBox on our own
-            m_clveEntries.OwnerDraw = true;
-            m_clveEntries.DrawItem += new DrawListViewItemEventHandler(this.DrawItemHandler);
-            m_clveEntries.DrawSubItem += new DrawListViewSubItemEventHandler(this.DrawSubItemHandler);
-            m_clveEntries.DrawColumnHeader += new DrawListViewColumnHeaderEventHandler(this.DrawColumnHeaderHandler);
+            new KPEnhancedListviewOpenDirectory();
 
             return true; // Initialization successful
         }
@@ -156,68 +161,15 @@ namespace KPEnhancedListview
             // Important! Remove event handlers!
             m_host.MainWindow.FileSaved -= OnFileSaved;
 
-            m_clveEntries.DrawItem -= new DrawListViewItemEventHandler(this.DrawItemHandler);
-            m_clveEntries.DrawSubItem -= new DrawListViewSubItemEventHandler(this.DrawSubItemHandler);
-            m_clveEntries.DrawColumnHeader -= new DrawListViewColumnHeaderEventHandler(this.DrawColumnHeaderHandler);
-
             // Undo OnMenuInlineEditing
-            TerminateInlineEditing();
+            //TerminateInlineEditing();
+            //KPEnhancedListviewInlineEditing
 
             // AddEntry
-            TerminateAddEntry();
-        }
+            //TerminateAddEntry();
+            //KPEnhancedListviewAddEntry
 
-        //
-        // Shared functions
-        //
-        private void UpdateSaveIcon()
-        {
-            // Update toolbar save icon
-            m_host.MainWindow.UpdateUI(false, null, false, null, false, null, true);
-        }
-
-        private void DrawItemHandler(object sender, DrawListViewItemEventArgs e)
-        {                 
-            // Inline Editing
-            if (_editingControl != null)
-            {
-                //if (_editItem.Equals(e.Item)) // textbox does not move outside the listview clientarea
-                {
-                    // Check if item is visible - below ColumnHeader     
-                    if (m_headerBottom <= m_clveEntries.Items[_editItem.Index].Bounds.Top)
-                    {
-                        Rectangle rect = GetSubItemBounds(m_clveEntries.Items[_editItem.Index], _editSubItem);
-                        //if (!_editingControl.Bounds.Equals(rect))
-                        {
-                            SetEditBox(_editingControl, rect, _editSubItem);
-                        }
-                    }
-                    else
-                    {
-                        //if (_editingControl.Bounds.Height != 0)
-                        {
-                            // Workaround to avoid Editbox is drawn on ColumnHeader
-                            Rectangle rc = GetSubItemBounds(m_clveEntries.Items[_editItem.Index], _editSubItem);
-                            rc.Height = 0;
-                            SetEditBox(_editingControl, rc, _editSubItem);
-                        }
-                    }
-                }
-            }
-
-            e.DrawDefault = true;
-        }
-
-        private void DrawSubItemHandler(object sender, DrawListViewSubItemEventArgs e)
-        {
-            e.DrawDefault = true;
-        }
-
-        private void DrawColumnHeaderHandler(object sender, DrawListViewColumnHeaderEventArgs e)
-        {
-            m_headerBottom = e.Bounds.Bottom;
-
-            e.DrawDefault = true;
-        }
+            //KPEnhancedListviewOpenDirectory
+        } 
     }
 }
