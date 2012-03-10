@@ -1,20 +1,20 @@
 /*
-  KeePass Password Safe - The Open-Source Password Manager
-  Copyright (C) 2003-2009 Dominik Reichl <dominik.reichl@t-online.de>
+    KPEnhancedListview - Extend the KeePass Listview for inline editing.
+    Copyright (C) 2010 - 2012  Frank Glaser  <glaserfrank(at)gmail.com>
+    http://code.google.com/p/kpenhancedlistview
+    
+    KPEnhancedListview is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
 
-  This program is free software; you can redistribute it and/or modify
-  it under the terms of the GNU General Public License as published by
-  the Free Software Foundation; either version 2 of the License, or
-  (at your option) any later version.
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
 
-  This program is distributed in the hope that it will be useful,
-  but WITHOUT ANY WARRANTY; without even the implied warranty of
-  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-  GNU General Public License for more details.
-
-  You should have received a copy of the GNU General Public License
-  along with this program; if not, write to the Free Software
-  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 using System;
@@ -31,9 +31,9 @@ using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Threading;
 using System.Timers;
-#if !USE_NET20
-  using System.Linq;
-#endif
+//#if !USE_NET20
+//  using System.Linq;
+//#endif
 
 using KeePass;
 using KeePass.App;
@@ -63,28 +63,25 @@ namespace KPEnhancedListview
     {
         // The plugin remembers its host in this variable.
         public static IPluginHost m_host = null;
+        //public static DocumentManagerEx m_docMgr = null;
 
         public static ToolStripItemCollection m_tsMenu = null;
         public static ToolStripMenuItem m_tsPopup = null;
 
-        private ToolStripSeparator m_tsSeparator = null;
-
-        private const string m_ctseName = "m_toolMain";
+        //private const string m_ctseName = "m_toolMain";
         private const string m_clveName = "m_lvEntries";
         //private const string m_ctveName = "m_tvGroups";
         //private const string m_csceName = "m_splitVertical";
 
-        public static CustomToolStripEx m_ctseToolMain = null;
-        public static CustomListViewEx m_clveEntries = null;
-        //private CustomTreeViewEx m_ctveGroups = null;
+        //public static CustomToolStripEx m_toolMain = null;
+        public static CustomListViewEx m_lvEntries = null;
+        //public static CustomTreeViewEx m_tvGroups = null;
         //private CustomSplitContainerEx m_csceSplitVertical = null;
 
-        private EventSuppressor m_evEntries = null;
-        //private EventSuppressor m_evMainWindow = null;
-
-        // Mouse handler helper for detecting InlineEditing and AddEntry
-        private const int m_mouseTimeMin = 3000000;
-        private const int m_mouseTimeMax = 10000000;
+        // Declaration Sub Plugins
+        public static KPEnhancedListviewInlineEditing KPELInlineEditing = null;
+        public static KPEnhancedListviewAddEntry KPELAddEntry = null;
+        public static KPEnhancedListviewOpenGroup KPELOpenDirecotory = null;
 
         /// <summary>
         /// The <c>Initialize</c> function is called by KeePass when
@@ -102,13 +99,14 @@ namespace KPEnhancedListview
             Debug.Assert(host != null);
             if (host == null) return false;
             m_host = host;
+            //m_docMgr = host.MainWindow.DocumentManager;
 
             // Get a reference to the 'Tools' menu item container
             m_tsMenu = m_host.MainWindow.ToolsMenu.DropDownItems;
 
             // Add a separator at the bottom
-            m_tsSeparator = new ToolStripSeparator();
-            m_tsMenu.Add(m_tsSeparator);
+            ToolStripSeparator tsSeparator = new ToolStripSeparator();
+            m_tsMenu.Add(tsSeparator);
 
             m_tsPopup = new ToolStripMenuItem();
             m_tsPopup.Text = "KPEnhancedListview";
@@ -119,26 +117,17 @@ namespace KPEnhancedListview
             m_host.MainWindow.FileSaved += OnFileSaved;
 
             // Find the listview control 
-            m_ctseToolMain = (CustomToolStripEx)Util.FindControlRecursive(m_host.MainWindow, m_ctseName);
-            m_clveEntries = (CustomListViewEx)Util.FindControlRecursive(m_host.MainWindow, m_clveName);
+            //m_toolMain = (CustomToolStripEx)Util.FindControlRecursive(m_host.MainWindow, m_ctseName);
+            m_lvEntries = (CustomListViewEx)Util.FindControlRecursive(m_host.MainWindow, m_clveName);
             //m_tsmiMenuView = (ToolStripMenuItem)Util.FindControlRecursive(m_host.MainWindow, m_tsmiName);
-            //m_ctveGroups = (CustomTreeViewEx)Util.FindControlRecursive(m_host.MainWindow, m_ctveName);
+            //m_tvGroups = (CustomTreeViewEx)Util.FindControlRecursive(m_host.MainWindow, m_ctveName);
             //m_csceSplitVertical = (CustomSplitContainerEx)Util.FindControlRecursive(m_host.MainWindow, m_csceName);
 
-            // Initialize EventSuppressor
-            m_evEntries = new EventSuppressor(m_clveEntries);
-            //m_evMainWindow = new EventSuppressor(m_host.MainWindow); //(Control)this);//(Control)m_host.MainWindow);
-
-            // Initialize Inline Editing
-            //InitializeInlineEditing();
-            new KPEnhancedListviewInlineEditing();
-
-            // Initialize add new entry on double click function
-            //InitializeAddEntry();
-            new KPEnhancedListviewAddEntry();
-
-            new KPEnhancedListviewOpenDirectory();
-
+            // Initialize Sub Plugins
+            KPELInlineEditing = new KPEnhancedListviewInlineEditing();
+            KPELAddEntry = new KPEnhancedListviewAddEntry();
+            KPELOpenDirecotory = new KPEnhancedListviewOpenGroup();
+            
             return true; // Initialization successful
         }
 
@@ -156,20 +145,20 @@ namespace KPEnhancedListview
         public override void Terminate()
         {
             // Remove all of our menu items
-            m_tsMenu.Remove(m_tsSeparator);
+            m_tsMenu.Clear();
 
             // Important! Remove event handlers!
             m_host.MainWindow.FileSaved -= OnFileSaved;
 
-            // Undo OnMenuInlineEditing
-            //TerminateInlineEditing();
-            //KPEnhancedListviewInlineEditing
+            // Delete Sub plugins
+            KPELInlineEditing = null;
+            KPELAddEntry = null;
+            KPELOpenDirecotory = null;
+        }
 
-            // AddEntry
-            //TerminateAddEntry();
-            //KPEnhancedListviewAddEntry
-
-            //KPEnhancedListviewOpenDirectory
-        } 
+        public override string UpdateUrl
+        {
+            get { return "http://kpenhancedlistview.googlecode.com/svn/trunk/KPEnhancedListview/VersionInformation.txt"; }
+        }
     }
 }
