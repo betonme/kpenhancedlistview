@@ -1,4 +1,23 @@
-﻿using System;
+﻿/*
+    KPEnhancedListview - Extend the KeePass Listview for inline editing.
+    Copyright (C) 2010 - 2012  Frank Glaser  <glaserfrank(at)gmail.com>
+    http://code.google.com/p/kpenhancedlistview
+    
+    KPEnhancedListview is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+*/
+
+using System;
 using System.Text;
 using System.Diagnostics;
 using System.Windows;
@@ -31,7 +50,7 @@ namespace KPEnhancedListview
 {
     partial class KPEnhancedListviewExt
     {
-        public class KPEnhancedListviewInlineEditing : KPEnhancedListviewBase
+        public class KPEnhancedListviewInlineEditing : SubPluginBase
         {
             //////////////////////////////////////////////////////////////
             // Sub Plugin setup
@@ -39,9 +58,16 @@ namespace KPEnhancedListview
             private const string m_tbToolTip = "Allows entry editing within the listview";
             protected const string m_cfgString = "KPEnhancedListview_InlineEditing";
 
+            //TODO Add submenu button list
+            //Display them greyed if subplugin is disabled
+            //private const string m_tbTextCN = "Cursor Navigation";
+            //private const string m_tbToolTipCN = "Allows entry editing within the listview";
+            //protected const string m_cfgStringCN = "KPEnhancedListview_InlineEditing";
+
             public KPEnhancedListviewInlineEditing()
             {
                 AddMenu(m_cfgString, m_tbText, m_tbToolTip);
+                //AddMenu(m_cfgStringCN, m_tbTextCN, m_tbToolTipCN);
                 InitializeInlineEditing();
             }
 
@@ -49,65 +75,40 @@ namespace KPEnhancedListview
             // Sub Plugin handler registration
             protected override void AddHandler()
             {
-                m_clveEntries.KeyDown += new KeyEventHandler(this.OnItemKeyDown);
-                m_clveEntries.MouseUp += new MouseEventHandler(this.OnItemMouseUp);
+                m_lvEntries.KeyDown += new KeyEventHandler(this.OnItemKeyDown);
+                m_lvEntries.MouseUp += new MouseEventHandler(this.OnItemMouseUp);
 
-                m_clveEntries.MouseDown += new MouseEventHandler(this.OnItemCancel);
-                m_clveEntries.MouseCaptureChanged += new EventHandler(this.OnItemCancel);
-
-                m_clveEntries.Resize += new EventHandler(this.OnItemCancel);
-                m_clveEntries.Invalidated += new InvalidateEventHandler(this.OnItemCancel);
-                m_clveEntries.ColumnReordered += new ColumnReorderedEventHandler(this.OnItemCancel);
-
-                m_host.MainWindow.Move += new EventHandler(this.OnItemCancel);
-                m_host.MainWindow.Resize += new EventHandler(this.OnItemCancel);
-                m_host.MainWindow.MouseDown += new MouseEventHandler(this.OnItemCancel);
-                m_host.MainWindow.MouseCaptureChanged += new EventHandler(this.OnItemCancel);
-
-                m_host.MainWindow.MainMenu.MouseDown += new MouseEventHandler(this.OnItemCancel);
-                m_host.MainWindow.MainMenu.MenuActivate += new EventHandler(this.OnItemCancel);
-
-                m_ctseToolMain.MouseDown += new MouseEventHandler(this.OnItemCancel);
-                m_ctseToolMain.ItemClicked += new ToolStripItemClickedEventHandler(this.OnItemCancel);
+                m_lvEntries.Invalidated += new InvalidateEventHandler(this.OnItemCancel);
+                m_lvEntries.ColumnReordered += new ColumnReorderedEventHandler(this.OnItemCancel);
 
                 // Tell windows we are interested in drawing items in ListBox on our own
-                m_clveEntries.OwnerDraw = true;
-                m_clveEntries.DrawItem += new DrawListViewItemEventHandler(this.DrawItemHandler);
-                m_clveEntries.DrawSubItem += new DrawListViewSubItemEventHandler(this.DrawSubItemHandler);
-                m_clveEntries.DrawColumnHeader += new DrawListViewColumnHeaderEventHandler(this.DrawColumnHeaderHandler);
+                m_lvEntries.OwnerDraw = true;
+                m_lvEntries.DrawItem += new DrawListViewItemEventHandler(this.DrawItemHandler);
+                m_lvEntries.DrawSubItem += new DrawListViewSubItemEventHandler(this.DrawSubItemHandler);
+                m_lvEntries.DrawColumnHeader += new DrawListViewColumnHeaderEventHandler(this.DrawColumnHeaderHandler);
             }
 
             protected override void RemoveHandler()
             {
-                m_clveEntries.KeyDown -= new KeyEventHandler(this.OnItemKeyDown);
-                m_clveEntries.MouseUp -= new MouseEventHandler(this.OnItemMouseUp);
+                m_lvEntries.KeyDown -= new KeyEventHandler(this.OnItemKeyDown);
+                m_lvEntries.MouseUp -= new MouseEventHandler(this.OnItemMouseUp);
 
-                m_clveEntries.MouseDown -= new MouseEventHandler(this.OnItemCancel);
-                m_clveEntries.MouseCaptureChanged -= new EventHandler(this.OnItemCancel);
+                m_lvEntries.Invalidated -= new InvalidateEventHandler(this.OnItemCancel);
+                m_lvEntries.ColumnReordered -= new ColumnReorderedEventHandler(this.OnItemCancel); // Todo change position of textbox and redraw
 
-                m_clveEntries.Resize -= new EventHandler(this.OnItemCancel);
-                m_clveEntries.Invalidated -= new InvalidateEventHandler(this.OnItemCancel);
-                m_clveEntries.ColumnReordered -= new ColumnReorderedEventHandler(this.OnItemCancel); // Todo change position of textbox and redraw
-
-                m_host.MainWindow.Move -= new EventHandler(this.OnItemCancel);
-                m_host.MainWindow.Resize -= new EventHandler(this.OnItemCancel);
-                m_host.MainWindow.MouseDown -= new MouseEventHandler(this.OnItemCancel);
-                m_host.MainWindow.MouseCaptureChanged -= new EventHandler(this.OnItemCancel);
-
-                m_host.MainWindow.MainMenu.MouseDown -= new MouseEventHandler(this.OnItemCancel);
-                m_host.MainWindow.MainMenu.MenuActivate -= new EventHandler(this.OnItemCancel);
-
-                m_ctseToolMain.MouseDown -= new MouseEventHandler(this.OnItemCancel);
-                m_ctseToolMain.ItemClicked -= new ToolStripItemClickedEventHandler(this.OnItemCancel);
-
-                m_clveEntries.DrawItem -= new DrawListViewItemEventHandler(this.DrawItemHandler);
-                m_clveEntries.DrawSubItem -= new DrawListViewSubItemEventHandler(this.DrawSubItemHandler);
-                m_clveEntries.DrawColumnHeader -= new DrawListViewColumnHeaderEventHandler(this.DrawColumnHeaderHandler);
+                m_lvEntries.OwnerDraw = false;
+                m_lvEntries.DrawItem -= new DrawListViewItemEventHandler(this.DrawItemHandler);
+                m_lvEntries.DrawSubItem -= new DrawListViewSubItemEventHandler(this.DrawSubItemHandler);
+                m_lvEntries.DrawColumnHeader -= new DrawListViewColumnHeaderEventHandler(this.DrawColumnHeaderHandler);
             }
 
             //////////////////////////////////////////////////////////////
             // Sub Plugin functionality
             private DateTime m_mouseDownForIeAt = DateTime.MinValue;
+
+            // Mouse handler helper for detecting InlineEditing
+            private const int m_mouseTimeMin = 3000000;
+            private const int m_mouseTimeMax = 10000000;
 
             private ListViewItem m_previousClickedListViewItem = null;
             private int m_previousClickedListViewSubItem = 0;
@@ -123,19 +124,7 @@ namespace KPEnhancedListview
             // The LVI being edited
             private ListViewItem _editItem;
             // The SubItem being edited
-            //TODO private ListViewItem.ListViewSubItem _editSubItem;
             private int _editSubItem;
-
-            //[DllImport("user32.dll", CharSet = CharSet.Ansi)]
-            //private static extern IntPtr SendMessage(IntPtr hWnd, int msg, int len, ref	int[] order);
-
-            //[DllImport("user32.dll", EntryPoint = "LockWindowUpdate", SetLastError = true, ExactSpelling = true, CharSet = CharSet.Auto, CallingConvention = CallingConvention.StdCall)]
-            //private static extern long LockWindow(long Handle);
-            // Lock listview - prevent scolling
-            //LockWindow(m_clveEntries.Handle.ToInt64());
-            // Unlock listview
-            //LockWindow(0);
-
 
             private void InitializeInlineEditing()
             {
@@ -150,22 +139,22 @@ namespace KPEnhancedListview
                 m_textBoxComment.AutoSize = false;
                 m_textBoxComment.Padding = new Padding(6, 1, 1, 0);
                 m_textBoxComment.Visible = false;
-                m_clveEntries.Controls.Add(m_textBoxComment);
+                m_lvEntries.Controls.Add(m_textBoxComment);
             }
 
             private void OnItemKeyDown(object sender, System.Windows.Forms.KeyEventArgs k)
             {
                 //TODO Ctrl+F2  InlineEditing     // configurable and save
                 //TODO Alt+F2   Edit Icon         // configurable and save
-                if (k.KeyCode == Keys.F3)
+                if ( (k.Control && k.KeyCode == Keys.F2) || (k.KeyCode == Keys.F3) )
                 {
                     // edit selected item
-                    if (m_clveEntries.SelectedIndices.Count > 0)
+                    if (m_lvEntries.FocusedItem != null)
                     {
-                        ListViewItem Item = m_clveEntries.SelectedItems[0];
+                        ListViewItem Item = m_lvEntries.FocusedItem;
                         if (Item != null)
                         {
-                            StartEditing(m_textBoxComment, Item, 0);
+                            StartEditing(Item, 0);
                         }
                     }
                 }
@@ -177,7 +166,7 @@ namespace KPEnhancedListview
                 if (e.Button == MouseButtons.Left)
                 {
                     ListViewItem item;
-                    int subitem = Util.GetSubItemAt(m_clveEntries, e.X, e.Y, out item);
+                    int subitem = Util.GetSubItemAt(e.X, e.Y, out item);
                     if (item != null)
                     {
                         if ((m_previousClickedListViewItem != null) && (item == m_previousClickedListViewItem))
@@ -187,10 +176,10 @@ namespace KPEnhancedListview
                                 long datNow = DateTime.Now.Ticks;
                                 long datMouseDown = m_mouseDownForIeAt.Ticks;
 
-                                // Slow double clicking with the left moaus button
+                                // Slow double clicking with the left mouse button
                                 if ((datNow - datMouseDown > m_mouseTimeMin) && (datNow - datMouseDown < m_mouseTimeMax))
                                 {
-                                    Point pt = m_clveEntries.PointToClient(Cursor.Position);
+                                    Point pt = m_lvEntries.PointToClient(Cursor.Position);
                                     EditSubitemAt(pt);
                                     return;
                                 }
@@ -208,7 +197,52 @@ namespace KPEnhancedListview
                 if (_editingControl != null)
                 {
                     // Close and cancel
-                    EndEditing(_editingControl, _editItem, _editSubItem, false);
+                    EndEditing(false);
+                }
+            }
+
+            public void StartEditing(ListViewItem Item)
+            {
+                if (Item != null)
+                {
+                    PwListItem pli = (((ListViewItem)Item).Tag as PwListItem);
+                    if (pli == null) { Debug.Assert(false); return; }
+                    PwEntry pe = pli.Entry;
+                    StartEditing(pe, Item, 0, false);
+                }
+            }
+
+            public void StartEditing(ListViewItem Item, int SubItem)
+            {
+                if (Item != null)
+                {
+                    PwListItem pli = (((ListViewItem)Item).Tag as PwListItem);
+                    if (pli == null) { Debug.Assert(false); return; }
+                    PwEntry pe = pli.Entry;
+                    StartEditing(pe, Item, SubItem, false);
+                }
+            }
+
+            public void StartEditing(ListViewItem Item, int SubItem, bool ContinueEdit)
+            {
+                if (Item != null)
+                {
+                    PwListItem pli = (((ListViewItem)Item).Tag as PwListItem);
+                    if (pli == null) { Debug.Assert(false); return; }
+                    PwEntry pe = pli.Entry;
+                    StartEditing(pe, Item, SubItem, ContinueEdit);
+                }
+            }
+
+            public void StartEditingOLD(PwEntry pe, int SubItem)
+            {
+                if (pe != null)
+                {
+                    ListViewItem Item = Util.GuiFindEntry(pe.Uuid);
+                    if (Item != null)
+                    {
+                        StartEditing(pe, Item, SubItem, false);
+                    }
                 }
             }
 
@@ -218,15 +252,14 @@ namespace KPEnhancedListview
             /// <param name="c">Control used as cell editor</param>
             /// <param name="Item">ListViewItem to edit</param>
             /// <param name="SubItem">SubItem index to edit</param>
-            private void StartEditing(PaddedTextBox c, ListViewItem Item, int SubItem)
+            private void StartEditing(PwEntry pe, ListViewItem Item, int SubItem, bool ContinueEdit)
             {
-                mutEdit.WaitOne();
-
-                if (_editingControl != null)
+                if (!this.GetEnable())
                 {
-                    mutEdit.ReleaseMutex();
                     return;
                 }
+
+                mutEdit.WaitOne();
 
                 if (Item.Index == -1)
                 {
@@ -234,44 +267,39 @@ namespace KPEnhancedListview
                     return;
                 }
 
-                // Remove/Suppress UIStateUpdated Event Handler
-                // UIStateUpdated is called on entering InlineEditing 
-                //TODO m_evMainWindow Suppress not working
-                //m_evMainWindow.Suppress("OnPwListCustomColumnUpdate");
-                //m_host.MainWindow.UIStateUpdated -= new EventHandler(OnPwListCustomColumnUpdate);
+                //if (_editingControl != null)
+                //{
+                //    mutEdit.ReleaseMutex();
+                //    return;
+                //}
 
-                Util.EnsureVisibleEntry(m_clveEntries, ((PwEntry)Item.Tag).Uuid);
+                m_host.MainWindow.EnsureVisibleEntry(pe.Uuid);
+                Util.SelectEntry(pe, true, true);
 
                 int colID = SubItem;
                 AceColumn col = Util.GetAceColumn(colID);
                 AceColumnType colType = col.Type;
+                PaddedTextBox c = m_textBoxComment;
 
                 // Set Multiline property
+                //TODO separate function
                 switch (colType)
                 {
                     case AceColumnType.Notes:
                     case AceColumnType.CustomString:
                         c.Multiline = true;
-#if USE_LS
-                        c.LineSpacing(27); //26 ok); // Spacing equal listview item height
-#endif
                         break;
                     case AceColumnType.PluginExt:
                         //TODO
                         c.Multiline = false;
-#if USE_LS
-                        c.LineSpacing(20); // Single spacing
-#endif
                         break;
                     default:
                         c.Multiline = false;
-#if USE_LS
-                        c.LineSpacing(20); // Single spacing
-#endif
                         break;
                 }
 
                 // Set editing allowed
+                //TODO separate function
                 switch (colType)
                 {
                     case AceColumnType.CreationTime:
@@ -297,34 +325,44 @@ namespace KPEnhancedListview
                 }
 
                 // Read SubItem text and set textbox property
-                // TODO PasswordChar *** during editing for protected strings ???
 
-                PwEntry pe = (((ListViewItem)Item).Tag as PwEntry);
+                // TODO Optionally PasswordChar *** during editing for protected strings
 
-#if USE_RTB
                 // Read entry
-                c.Text = Util.GetEntryFieldEx(pe, SubItem);
-#else
-                c.Text = Util.StringToMultiLine(Util.GetEntryFieldEx(pe, SubItem), SubItem);
-#endif
-                c.ScrollToTop();
-                c.SelectAll();
+                c.Text = Util.GetEntryFieldEx(pe, SubItem, false);
 
                 // Set control location, bounding, padding
                 SetEditBox(c, GetSubItemBounds(Item, SubItem), SubItem);
-
-                c.Visible = true;
-                c.BringToFront();
-                c.Select();
-                c.Focus();
-
-                c.Leave += new EventHandler(_editControl_Leave);
-                c.LostFocus += new EventHandler(_editControl_LostFocus);
-                c.KeyPress += new KeyPressEventHandler(_editControl_KeyPress);
+                
+                //c.ScrollToTop();
+                c.SelectAll();
 
                 _editingControl = c;
                 _editItem = Item;
                 _editSubItem = SubItem;
+
+                if (ContinueEdit == false)
+                {
+                    //c.Invalidate();
+                    c.Visible = true;
+                    c.BringToFront();
+                    c.Select();
+                    c.Focus();
+
+                    m_host.MainWindow.EnsureVisibleEntry(pe.Uuid);
+
+                    // Check sub plugin state
+                    if (!m_bEnabled)
+                    {
+                        // Function has to be enabled
+                        AddHandler();
+                    }
+                }
+
+                // Should be in the textbox
+                c.Leave += new EventHandler(_editControl_Leave);
+                c.LostFocus += new EventHandler(_editControl_LostFocus);
+                c.KeyPress += new KeyPressEventHandler(_editControl_KeyPress);
 
                 mutEdit.ReleaseMutex();
             }
@@ -336,7 +374,11 @@ namespace KPEnhancedListview
             private void StartImageEditing(ListViewItem item)
             {
                 IconPickerForm ipf = new IconPickerForm();
-                PwEntry pe = ((PwEntry)item.Tag);
+
+                PwListItem pli = (((ListViewItem)item).Tag as PwListItem);
+                if (pli == null) { Debug.Assert(false); return; }
+                PwEntry pe = pli.Entry;
+
                 ipf.InitEx(m_host.MainWindow.ClientIcons, (uint)PwIcon.Count, m_host.Database, (uint)pe.IconId, pe.CustomIconUuid);
 
                 if (ipf.ShowDialog() == DialogResult.OK)
@@ -349,51 +391,56 @@ namespace KPEnhancedListview
                         pe.CustomIconUuid = PwUuid.Zero;
                     }
 
-                    //bool bUpdImg = m_host.Database.UINeedsIconUpdate;
-                    m_host.MainWindow.RefreshEntriesList();
-                    Util.UpdateSaveIcon();
+                    //m_host.MainWindow.RefreshEntriesList();
+                    //Util.UpdateSaveIcon();
                 }
+            }
+
+            private void EndEditing(bool AcceptChanges)
+            {
+                EndEditing(AcceptChanges, false);
             }
 
             /// <summary>
             /// Accept or discard current value of cell editor control
             /// </summary>
             /// <param name="AcceptChanges">Use the _editingControl's Text as new SubItem text or discard changes?</param>
-            private void EndEditing(PaddedTextBox c, ListViewItem Item, int SubItem, bool AcceptChanges)
+            private void EndEditing(bool AcceptChanges, bool ContinueEdit)
             {
                 mutEdit.WaitOne();
 
-                if (_editingControl == null)
-                {
-                    mutEdit.ReleaseMutex();
-                    return;
-                }
+                //if (_editingControl == null)
+                //{
+                //    mutEdit.ReleaseMutex();
+                //    return;
+                //}
 
-                c.Leave -= new EventHandler(_editControl_Leave);
-                c.LostFocus -= new EventHandler(_editControl_LostFocus);
-                c.KeyPress -= new KeyPressEventHandler(_editControl_KeyPress);
+                ListViewItem Item = _editItem;
+                int SubItem = _editSubItem;
+                PaddedTextBox c = _editingControl;
 
-                c.Visible = false;
+                PwListItem pli = (((ListViewItem)Item).Tag as PwListItem);
+                if (pli == null) { Debug.Assert(false); return; }
+                PwEntry pe = pli.Entry;
 
                 if (AcceptChanges == true)
                 {
                     // Check if item and textbox contain different text
-                    if (_editItem.SubItems[SubItem].Text != c.Text)
+                    if (Util.GetEntryFieldEx(pe, SubItem, false) != c.Text)
                     {
                         // Save changes
+                        //MAYBE save only if editing is stopped or another item will be edited next
+                        //if (ContinueEdit == false)
                         AcceptChanges = Util.SaveEntry(m_host.Database, Item, SubItem, c.Text);
 
+                        //TODO TEST maybe it wont flickr if we set visible false later
                         // Avoid flickering
                         // Set item text manually before calling RefreshEntriesList
                         // If Item is protected
                         if (!_editItem.SubItems[_editSubItem].Text.Equals(PwDefs.HiddenPassword))
                         {
                             // Updating the listview item
-#if USE_RTB
-                            _editItem.SubItems[_editSubItem].Text = _editingControl.Text;
-#else
-                            _editItem.SubItems[_editSubItem].Text = Util.StringToOneLine(_editingControl.Text, _editSubItem);
-#endif
+                            _editItem.SubItems[_editSubItem].Text = Util.GetEntryFieldEx(pe, SubItem, true);
                         }
                     }
                     else
@@ -409,22 +456,41 @@ namespace KPEnhancedListview
                     // AcceptChanges is false
                 }
 
-                _editingControl = null;
-                _editItem = null;
-                _editSubItem = -1;
+                //TODO Should be part of the textbox and inlineedit should be notified by event
+                c.Leave -= new EventHandler(_editControl_Leave);
+                c.LostFocus -= new EventHandler(_editControl_LostFocus);
+                c.KeyPress -= new KeyPressEventHandler(_editControl_KeyPress);
 
-                if (AcceptChanges == true)
+                if (ContinueEdit == false)
                 {
-                    // The number of visible entries has not changed, so we can call RefreshEntriesList
-                    Util.UpdateSaveIcon();
-                    m_host.MainWindow.RefreshEntriesList();
-                    Util.EnsureVisibleEntry(m_clveEntries, ((PwEntry)Item.Tag).Uuid);
-                    Util.SelectEntry(m_clveEntries, (PwEntry)Item.Tag, true);
+                    // Check sub plugin state
+                    if (!m_bEnabled)
+                    {
+                        // Function has to be disabled
+                        RemoveHandler();
+                    }
+
+                    _editingControl = null;
+                    _editItem = null;
+                    _editSubItem = -1;
+
+                    c.Visible = false;
+
+                    //Util.SelectEntry((PwEntry)Item.Tag, true);            
+                    //m_lvEntries.Update();
+                    m_lvEntries.Select();
+                    m_lvEntries.HideSelection = false;
+                    m_lvEntries.Focus();
+
+                    if (AcceptChanges == true)
+                    {
+                        // The number of visible entries has not changed, so we can call RefreshEntriesList
+                        Util.UpdateSaveState();
+                        m_host.MainWindow.EnsureVisibleEntry(pe.Uuid);
+                        //TEST m_host.MainWindow.RefreshEntriesList();
+                    }
                 }
-
-                //m_clveEntries.Update();
-                m_clveEntries.Select();
-
+                
                 // Add/Resume UIStateUpdated Event Handler
                 //m_evMainWindow.Resume("OnPwListCustomColumnUpdate");
                 //m_host.MainWindow.UIStateUpdated += new EventHandler(OnPwListCustomColumnUpdate);
@@ -439,23 +505,26 @@ namespace KPEnhancedListview
             private void EditSubitemAt(Point p)
             {
                 ListViewItem item;
-                int subitem = Util.GetSubItemAt(m_clveEntries, p.X, p.Y, out item);
-
-                // Image Editing
-                if (subitem == 0)
+                int subitem = Util.GetSubItemAt(p.X, p.Y, out item);
+                if (item != null)
                 {
-                    if (HitImageTestAt(p, item))
+                    // Image Editing
+                    if (subitem == 0)
                     {
-                        StartImageEditing(item);
+                        // The Icon is part of the SubItem 0 maybe it was clicked
+                        if (HitImageTestAt(p, item))
+                        {
+                            StartImageEditing(item);
+                            return;
+                        }
+                    }
+
+                    // Inline Editing
+                    if (subitem >= 0)
+                    {
+                        StartEditing(item, subitem);
                         return;
                     }
-                }
-
-                // Inline Editing
-                if (subitem >= 0)
-                {
-                    StartEditing(m_textBoxComment, item, subitem);
-                    return;
                 }
             }
 
@@ -492,7 +561,7 @@ namespace KPEnhancedListview
             /// <returns>Bounds of SubItem (relative to ListView)</returns>
             private Rectangle GetSubItemBounds(ListViewItem Item, int SubItem)
             {
-                int[] order = Util.GetColumnOrder(m_clveEntries);
+                int[] order = Util.GetColumnOrder();
 
                 Rectangle subItemRect = Rectangle.Empty;
                 if (SubItem >= order.Length)
@@ -503,7 +572,7 @@ namespace KPEnhancedListview
 
                 Rectangle lviBounds = Item.GetBounds(ItemBoundsPortion.Entire);
                 int subItemX = lviBounds.Left;
-                switch (m_clveEntries.BorderStyle)
+                switch (m_lvEntries.BorderStyle)
                 {
                     case BorderStyle.Fixed3D:
                         subItemX += SystemInformation.Border3DSize.Width;
@@ -517,21 +586,21 @@ namespace KPEnhancedListview
                 int i;
                 for (i = 0; i < order.Length; i++)
                 {
-                    col = m_clveEntries.Columns[order[i]];
+                    col = m_lvEntries.Columns[order[i]];
                     if (col.Index == SubItem)
                         break;
                     subItemX += col.Width;
                 }
 
-                if (m_clveEntries.RightToLeftLayout)
+                if (m_lvEntries.RightToLeftLayout)
                 {
-                    subItemX = m_clveEntries.Width - subItemX - m_clveEntries.Columns[order[i]].Width;
+                    subItemX = m_lvEntries.Width - subItemX - m_lvEntries.Columns[order[i]].Width;
                 }
 
                 // Adapt the bounds
                 subItemX = subItemX - 1;
                 int subItemT = lviBounds.Top + 2;
-                int subItemW = m_clveEntries.Columns[order[i]].Width + 1;
+                int subItemW = m_lvEntries.Columns[order[i]].Width + 1;
                 int subItemH = lviBounds.Height;
 
                 if (SubItem == 0)
@@ -546,34 +615,210 @@ namespace KPEnhancedListview
             }
 
             /// <summary>
-            /// Find Next ListView SubItem
+            /// Find Next ListView Item
+            /// </summary>
+            /// <param name="Item">Item to find next for</param>
+            /// <returns>Item</returns>
+            private ListViewItem GetNextItemFor(ListViewItem Item)
+            {
+                bool m_bEntryGrouping = m_lvEntries.ShowGroups;
+
+                ListViewItem nextItem = null;
+
+                if (m_lvEntries.Items.Count > 0)
+                {
+                    if ( m_lvEntries.Groups.Count > 0 )
+                    {
+                        // Grouping is enabled
+                        // Within the group the items are not in display order,
+                        // but the order can be derived from the item indices
+                        PwListItem pli = (((ListViewItem)Item).Tag as PwListItem);
+                        PwGroup pg = pli.Entry.ParentGroup;
+                        
+                        foreach (ListViewGroup lvg in m_lvEntries.Groups)
+                        {
+                            if ((lvg.Tag as PwGroup) == pli.Entry.ParentGroup)
+                            {
+                                List<ListViewItem> lItems = new List<ListViewItem>();
+                                foreach (ListViewItem lviEnum in lvg.Items)
+                                    lItems.Add(lviEnum);
+                                lItems.Sort(Util.LviCompareByIndex);
+
+                                int nextidx = lItems.IndexOf(Item) + 1;
+                                if (nextidx < lItems.Count)
+                                {
+                                    // Next item is within the group
+                                    nextItem = lItems[nextidx];
+                                    break;
+                                }
+                                else
+                                {
+                                    // Next item is in next group
+                                    int nextgrp = m_lvEntries.Groups.IndexOf(lvg) + 1;
+                                    if (nextgrp < m_lvEntries.Groups.Count)
+                                    {
+                                        // Go to first item in next group
+                                        lItems = new List<ListViewItem>();
+                                        foreach (ListViewItem lviEnum in m_lvEntries.Groups[nextgrp].Items)
+                                            lItems.Add(lviEnum);
+                                        lItems.Sort(Util.LviCompareByIndex);
+                                        nextItem = lItems[0];
+                                    }
+                                    else
+                                    {
+                                        // Go to first item in first group
+                                        lItems = new List<ListViewItem>();
+                                        foreach (ListViewItem lviEnum in m_lvEntries.Groups[0].Items)
+                                            lItems.Add(lviEnum);
+                                        lItems.Sort(Util.LviCompareByIndex);
+                                        nextItem = lItems[0];
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    else
+                    {
+                        // Grouping is disabled
+                        // All items in list are in their correct order
+                        int idx = m_lvEntries.Items.IndexOf(Item);
+                        int cnt = m_lvEntries.Items.Count;
+                        nextItem = m_lvEntries.Items[(idx + 1) % cnt];
+                    }
+                }
+
+                return nextItem;
+            }
+
+            private ListViewItem GetPreviousItemFor(ListViewItem Item)
+            {
+                bool m_bEntryGrouping = m_lvEntries.ShowGroups;
+
+                ListViewItem prevItem = null;
+
+                if (m_lvEntries.Items.Count > 0)
+                {
+                    if (m_lvEntries.Groups.Count > 0)
+                    {
+                        // Grouping is enabled
+                        // Within the group the items are not in display order,
+                        // but the order can be derived from the item indices
+                        PwListItem pli = (((ListViewItem)Item).Tag as PwListItem);
+                        PwGroup pg = pli.Entry.ParentGroup;
+
+                        foreach (ListViewGroup lvg in m_lvEntries.Groups)
+                        {
+                            if ((lvg.Tag as PwGroup) == pli.Entry.ParentGroup)
+                            {
+                                List<ListViewItem> lItems = new List<ListViewItem>();
+                                foreach (ListViewItem lviEnum in lvg.Items)
+                                    lItems.Add(lviEnum);
+                                lItems.Sort(Util.LviCompareByIndex);
+
+                                int previdx = lItems.IndexOf(Item) - 1;
+                                if (previdx >= 0)
+                                {
+                                    // Previous item is within the group
+                                    prevItem = lItems[previdx];
+                                    break;
+                                }
+                                else
+                                {
+                                    // Previous item is in previous group
+                                    int prevgrp = m_lvEntries.Groups.IndexOf(lvg) - 1;
+                                    if (prevgrp >= 0)
+                                    {
+                                        // Go to last item in previous group
+                                        lItems = new List<ListViewItem>();
+                                        foreach (ListViewItem lviEnum in m_lvEntries.Groups[prevgrp].Items)
+                                            lItems.Add(lviEnum);
+                                        lItems.Sort(Util.LviCompareByIndex);
+                                        prevItem = lItems[lItems.Count - 1];
+                                    }
+                                    else
+                                    {
+                                        // Go to last item in last group
+                                        lItems = new List<ListViewItem>();
+                                        foreach (ListViewItem lviEnum in m_lvEntries.Groups[m_lvEntries.Groups.Count - 1].Items)
+                                            lItems.Add(lviEnum);
+                                        lItems.Sort(Util.LviCompareByIndex);
+                                        prevItem = lItems[lItems.Count - 1];
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    else
+                    {
+                        // Grouping is disabled
+                        // All items in list are in their correct order
+                        int idx = m_lvEntries.Items.IndexOf(Item);
+                        int cnt = m_lvEntries.Items.Count;
+                        prevItem = m_lvEntries.Items[(idx - 1 + cnt) % cnt];
+                    }
+                }
+
+                return prevItem;
+            }
+
+            /// <summary>
+            /// Find next ListView SubItem
             /// </summary>
             /// <param name="SubItem">SubItem to find next for</param>
             /// <returns>SubItem index</returns>
             private int GetNextSubItemFor(int SubItem)
             {
-                int[] order = Util.GetColumnOrder(m_clveEntries);
+                int[] order = Util.GetColumnOrder();
 
+                int start = m_lvEntries.Columns[SubItem].DisplayIndex;
+                //TEST shift order start 
+                //go through all order and check width
+                int length = order.Length;
                 int nextSubItem = 0;
 
-                for (int i = m_clveEntries.Columns[SubItem].DisplayIndex; i < order.Length - 1; i++)
+                for (int i = 0; i < length; i++)
                 {
-                    if (order[i] == SubItem)
+                    int idx = (i + start) % length;
                     {
-                        if (m_clveEntries.Columns[order[i + 1]].Width > 0)
+                        int newidx = (idx + 1) % length;
+                        // Make sure column is visible
+                        if (m_lvEntries.Columns[order[newidx]].Width > 1)
                         {
-                            nextSubItem = i + 1;
+                            nextSubItem = newidx;
                             break;
-                        }
-                        else
-                        {
-
-                            SubItem = order[i + 1];
                         }
                     }
                 }
-
                 return order[nextSubItem];
+            }
+
+            /// <summary>
+            /// Find previous ListView SubItem
+            /// </summary>
+            /// <param name="SubItem">SubItem to find previous for</param>
+            /// <returns>SubItem index</returns>
+            private int GetPreviousSubItemFor(int SubItem)
+            {
+                int[] order = Util.GetColumnOrder();
+
+                int start = m_lvEntries.Columns[SubItem].DisplayIndex;
+                int length = order.Length;
+                int prevSubItem = length - 1;
+
+                for (int i = length; i >= 0; i--)
+                {
+                    int idx = (i + start) % length;
+                    {
+                        int newidx = (idx - 1 + length) % length;
+                        // Make sure column is visible
+                        if (m_lvEntries.Columns[order[newidx]].Width > 1)
+                        {
+                            prevSubItem = newidx;
+                            break;
+                        }
+                    }
+                }
+                return order[prevSubItem];
             }
 
             private void SetEditBox(PaddedTextBox c, Rectangle rcSubItem, int SubItem)
@@ -585,26 +830,24 @@ namespace KPEnhancedListview
                     rcSubItem.X = 0;
                 }
 
-                if (rcSubItem.X + rcSubItem.Width > m_clveEntries.ClientRectangle.Width)
+                if (rcSubItem.X + rcSubItem.Width > m_lvEntries.ClientRectangle.Width)
                 {
                     // Right edge of SubItem not visible - adjust rectangle width
-                    rcSubItem.Width = m_clveEntries.ClientRectangle.Width - rcSubItem.Left;
+                    rcSubItem.Width = m_lvEntries.ClientRectangle.Width - rcSubItem.Left;
                 }
 
                 // Calculate editbox height
-                if (c.Lines.Length > 1)
+                //if (c.Lines.Length > 1)
+                if (c.Multiline)
                 {
-#if USE_LS
-                                // For linespacing equal listview
-                rcSubItem.Height *= c.Lines.Count();
+                    // Always display only 1 line
+                    //rcSubItem.Height *= 1;
+                    
+                    // Set height depending on lines
+                    //rcSubItem.Height *= c.LineCount;
+                    rcSubItem.Height = c.CalculateHeight;
 
-                // For linespacing equal singlespacing
-                //rcSubItem.Height = rcSubItem.Height + c.Lines.Count() * /*~*/ 8;
-#endif
-                    // Always display 3 lines
-                    rcSubItem.Height *= 3;
-
-                    c.ScrollBars(true);
+                    //c.ScrollBars(true);
                 }
                 else
                 {
@@ -612,12 +855,12 @@ namespace KPEnhancedListview
                 }
 
                 // Subitem bounds are relative to the location of the ListView!
-                rcSubItem.Offset(m_clveEntries.Left, m_clveEntries.Top);
+                rcSubItem.Offset(m_lvEntries.Left, m_lvEntries.Top);
 
                 // In case the editing control and the listview are on different parents,
                 // account for different origins
                 Point origin = new Point(0, 0);
-                Point lvOrigin = m_clveEntries.Parent.PointToScreen(origin);
+                Point lvOrigin = m_lvEntries.Parent.PointToScreen(origin);
                 Point ctlOrigin = c.Parent.PointToScreen(origin);
 
                 rcSubItem.Offset(lvOrigin.X - ctlOrigin.X, lvOrigin.Y - ctlOrigin.Y);
@@ -628,12 +871,10 @@ namespace KPEnhancedListview
                 {
                     pdSubItem.Left = 1;
                 }
-#if USE_RTB
                 else if (c.Multiline)
                 {
                     pdSubItem.Left = 5;
                 }
-#endif
 
                 // Position, padding and show editor
                 if (!c.Bounds.Equals(rcSubItem))
@@ -652,91 +893,101 @@ namespace KPEnhancedListview
             private void _editControl_LostFocus(object sender, EventArgs e)
             {
                 // cell editor losing focus
-                if (m_clveEntries.Focused)
+                if (m_lvEntries.Focused)
                 {
                     // list view gets focus - save
-                    EndEditing(_editingControl, _editItem, _editSubItem, true);
+                    EndEditing(true);
                 }
                 else
                 {
                     // focus is gone away - cancel
-                    EndEditing(_editingControl, _editItem, _editSubItem, false);
+                    EndEditing(false);
                 }
             }
 
             private void _editControl_KeyPress(object sender, System.Windows.Forms.KeyPressEventArgs e)
             {
-                // TODO PasswordChar *** during editing for protected strings ???
+                //MAYBE Optionally PasswordChar *** during editing for protected strings
                 switch (e.KeyChar)
                 {
                     case (char)(int)Keys.Escape:
                         {
+                            // TODO if addentry remove it 
                             // Close and cancel
-                            EndEditing(_editingControl, _editItem, _editSubItem, false);
+                            EndEditing(false);
                             break;
                         }
 
                     case (char)(int)Keys.Enter:
                         {
                             // Close and save
-                            EndEditing(_editingControl, _editItem, _editSubItem, true);
+                            EndEditing(true);
+                            break;
+                        }
+
+                    case (char)(int)Keys.Right:
+                        {
+                            EndEditing(true, true);
+                            ListViewItem Item = _editItem;
+                            int SubItem = GetNextSubItemFor(_editSubItem);
+                            StartEditing(Item, SubItem, true);
+
+                            break;
+                        }
+
+                    case (char)(int)Keys.Left:
+                        {
+                            EndEditing(true, true);
+                            ListViewItem Item = _editItem;
+                            int SubItem = GetPreviousSubItemFor(_editSubItem);
+                            StartEditing(Item, SubItem, true);
+
+                            break;
+                        }
+
+                    case (char)(int)Keys.Up:
+                        {
+                            EndEditing(true, true);
+                            ListViewItem Item = GetPreviousItemFor(_editItem);
+                            int SubItem = _editSubItem;
+                            StartEditing(Item, SubItem, true);
+
+                            break;
+                        }
+
+                    case (char)(int)Keys.Down:
+                        {
+                            EndEditing(true, true);
+                            ListViewItem Item = GetNextItemFor(_editItem);
+                            int SubItem = _editSubItem;
+                            StartEditing(Item, SubItem, true);
+
                             break;
                         }
 
                     case (char)(int)Keys.Tab:
                         {
-                            //TODO add new function 
+                            //TODO add new function NextEditing
+                            //NextEditing(_editItem, SubItem);
                             // Save and edit next SubItem
                             ListViewItem Item = _editItem;
-                            int SubItem = GetNextSubItemFor(_editSubItem);
+                            int SubItem = 0;
 
-                            EndEditing(_editingControl, _editItem, _editSubItem, true);
-
-                            if (m_clveEntries.SelectedIndices.Count > 0)
+                            EndEditing(true, true);
+                            if (Control.ModifierKeys == Keys.Shift)
                             {
-                                StartEditing(m_textBoxComment, m_clveEntries.SelectedItems[0], SubItem);
+                                SubItem = GetPreviousSubItemFor(_editSubItem);
                             }
-
-                            break;
-                        }
-                    case (char)(int)Keys.ControlKey:
-                        {
-                            MessageBox.Show("Ck");
-                            break;
-                        }
-                    //TODO cusrsor keys not working
-                    case (char)(int)Keys.Right:
-                        {
-                            MessageBox.Show("R");
-                            if (Control.ModifierKeys == Keys.Control)
+                            else
                             {
-                                MessageBox.Show("1");
-                                // Save and edit next SubItem
-                                ListViewItem Item = _editItem;
-                                int SubItem = GetNextSubItemFor(_editSubItem);
-
-                                EndEditing(_editingControl, _editItem, _editSubItem, true);
-
-                                StartEditing(m_textBoxComment, Item, SubItem);
+                                SubItem = GetNextSubItemFor(_editSubItem);
                             }
-
-                            if (Control.ModifierKeys == Keys.ControlKey)
-                            {
-                                MessageBox.Show("2");
-                                // Save and edit next SubItem
-                                ListViewItem Item = _editItem;
-                                int SubItem = GetNextSubItemFor(_editSubItem);
-
-                                EndEditing(_editingControl, _editItem, _editSubItem, true);
-
-                                StartEditing(m_textBoxComment, Item, SubItem);
-                            }
+                            StartEditing(Item, SubItem, true);
 
                             break;
                         }
                 }
             }
-
 
             private void DrawItemHandler(object sender, DrawListViewItemEventArgs e)
             {
@@ -746,9 +997,9 @@ namespace KPEnhancedListview
                     //if (_editItem.Equals(e.Item)) // textbox does not move outside the listview clientarea
                     {
                         // Check if item is visible - below ColumnHeader     
-                        if (m_headerBottom <= m_clveEntries.Items[_editItem.Index].Bounds.Top)
+                        if (m_headerBottom <= m_lvEntries.Items[_editItem.Index].Bounds.Top)
                         {
-                            Rectangle rect = GetSubItemBounds(m_clveEntries.Items[_editItem.Index], _editSubItem);
+                            Rectangle rect = GetSubItemBounds(m_lvEntries.Items[_editItem.Index], _editSubItem);
                             //if (!_editingControl.Bounds.Equals(rect))
                             {
                                 SetEditBox(_editingControl, rect, _editSubItem);
@@ -759,7 +1010,7 @@ namespace KPEnhancedListview
                             //if (_editingControl.Bounds.Height != 0)
                             {
                                 // Workaround to avoid Editbox is drawn on ColumnHeader
-                                Rectangle rc = GetSubItemBounds(m_clveEntries.Items[_editItem.Index], _editSubItem);
+                                Rectangle rc = GetSubItemBounds(m_lvEntries.Items[_editItem.Index], _editSubItem);
                                 rc.Height = 0;
                                 SetEditBox(_editingControl, rc, _editSubItem);
                             }

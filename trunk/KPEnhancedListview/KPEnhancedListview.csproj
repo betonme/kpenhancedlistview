@@ -19,9 +19,6 @@
     <UpgradeBackupLocation>
     </UpgradeBackupLocation>
     <TargetFrameworkVersion>v3.5</TargetFrameworkVersion>
-    <TargetFrameworkSubset>
-    </TargetFrameworkSubset>
-    <RunPostBuildEvent>OnBuildSuccess</RunPostBuildEvent>
     <PublishUrl>publish\</PublishUrl>
     <Install>true</Install>
     <InstallFrom>Disk</InstallFrom>
@@ -37,32 +34,31 @@
     <IsWebBootstrapper>false</IsWebBootstrapper>
     <UseApplicationTrust>false</UseApplicationTrust>
     <BootstrapperEnabled>true</BootstrapperEnabled>
+    <TargetFrameworkProfile>
+    </TargetFrameworkProfile>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <DebugSymbols>true</DebugSymbols>
     <DebugType>full</DebugType>
     <Optimize>false</Optimize>
     <OutputPath>Build\Debug\</OutputPath>
-    <DefineConstants>TRACE;DEBUG;USE_RTB USE_NET35 USE_LS_NOT</DefineConstants>
+    <DefineConstants>TRACE;DEBUG</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <DebugType>pdbonly</DebugType>
-    <Optimize>true</Optimize>
+    <Optimize>false</Optimize>
     <OutputPath>Build\Release\</OutputPath>
-    <DefineConstants>TRACE;USE_RTB USE_NET35 USE_LS_NOT</DefineConstants>
+    <DefineConstants>TRACE;DEBUG</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="KeePass">
-      <HintPath>C:\Tools\KeePass\KeePass.exe</HintPath>
+      <HintPath>..\..\..\..\..\..\Program Files (x86)\KeePass Password Safe 2\KeePass.exe</HintPath>
     </Reference>
     <Reference Include="System" />
-    <Reference Include="System.Core">
-      <RequiredTargetFramework>3.5</RequiredTargetFramework>
-    </Reference>
     <Reference Include="System.Data" />
     <Reference Include="System.Drawing" />
     <Reference Include="System.Windows.Forms" />
@@ -70,10 +66,9 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="AddEntry.cs" />
-    <Compile Include="EventSuppressor.cs" />
     <Compile Include="InlineEditing.cs" />
-    <Compile Include="OpenDirectory.cs" />
-    <Compile Include="KPEnhancedListviewBase.cs" />
+    <Compile Include="OpenGroup.cs" />
+    <Compile Include="SubPluginBase.cs" />
     <Compile Include="MultilineTextBox.cs">
       <SubType>Component</SubType>
     </Compile>
@@ -105,7 +100,105 @@
       <Install>true</Install>
     </BootstrapperPackage>
   </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="PaddedTextbox.resx">
+      <DependentUpon>PaddedTextbox.cs</DependentUpon>
+    </EmbeddedResource>
+  </ItemGroup>
   <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
+  <PropertyGroup>
+    <PostBuildEvent>echo POSTBUILDSTEP for $(ProjectName)
+
+REM set KPDir=c:\Program Files (x86)\KeePass Password Safe 2\
+set KPDir=$(ProjectDir)..\KeePass\
+set KPPDir=%25KPDir%25plugins\
+
+REM no relative path for create plgx
+REM set KPPTempDir=%25KPPDir%25$(ProjectName)
+set KPPTempDir=$(ProjectDir)Build\$(ConfigurationName)\$(ProjectName)
+
+IF NOT "$(ConfigurationName)"=="Debug" Goto :NotDebug
+REM In debug mode we want to move the generated DLLs and PDBs to the plugins
+REM directory so we can easily set breakpoints, etc.
+REM In this case, we don't care if the Firefox add-on has missing or outdated
+REM files (they are only used at install time so it won't affect debugging)
+
+REM delete the PLGX from any previous Release build
+echo del /Q "%25KPPDir%25$(ProjectName).plgx"
+del /Q "%25KPPDir%25$(ProjectName).plgx"
+REM if errorlevel 1 goto BuildEventFailed
+echo Release plgx deleted
+
+REM copy output DLLs to KeePass plugins directory
+mkdir "%25KPPDir%25"
+echo copy "$(ProjectDir)Build\$(ConfigurationName)\$(ProjectName).dll" "%25KPPDir%25$(ProjectName).dll"
+copy "$(ProjectDir)Build\$(ConfigurationName)\$(ProjectName).dll" "%25KPPDir%25$(ProjectName).dll"
+if errorlevel 1 goto BuildEventFailed
+echo Debug DLLs copied to plugins directory
+
+goto BuildEventOK
+
+
+:NotDebug
+IF NOT "$(ConfigurationName)"=="Release" Goto :NotRelease
+REM In release mode we want to make sure that we are working with the PLGX version.
+
+REM delete the DLLs from any previous Debug build
+del /Q "%25KPPDir%25$(ProjectName).dll"
+REM if errorlevel 1 goto BuildEventFailed
+echo Debug DLLs deleted
+
+REM create temporary directory
+rmdir /S /Q "%25KPPTempDir%25"
+mkdir "%25KPPTempDir%25"
+if errorlevel 1 goto BuildEventFailed
+echo Temporary directory created
+REM copy relevant project files to temporary directory
+copy "$(ProjectDir)*.sln" "%25KPPTempDir%25"
+if errorlevel 1 goto BuildEventFailed
+copy "$(ProjectDir)*.csproj" "%25KPPTempDir%25"
+if errorlevel 1 goto BuildEventFailed
+copy "$(ProjectDir)*.cs" "%25KPPTempDir%25"
+if errorlevel 1 goto BuildEventFailed
+copy "$(ProjectDir)*.resx" "%25KPPTempDir%25"
+if errorlevel 1 goto BuildEventFailed
+mkdir "%25KPPTempDir%25\Properties"
+copy "$(ProjectDir)Properties\*.cs" "%25KPPTempDir%25\Properties"
+if errorlevel 1 goto BuildEventFailed
+echo Files copied to temporary directory
+
+REM create the PLGX
+echo "%25KPDir%25KeePass.exe" --plgx-create "%25KPPTempDir%25" --plgx-prereq-kp:2.18 --plgx-prereq-net:3.5
+"%25KPDir%25KeePass.exe" --plgx-create "%25KPPTempDir%25" --plgx-prereq-kp:2.18 --plgx-prereq-net:3.5
+if errorlevel 1 goto BuildEventFailed
+echo PLGX created
+
+REM copy PLGX to KeePass plugins directory
+echo copy "%25KPPTempDir%25\$(ProjectName).plgx" "%25KPPDir%25$(ProjectName).plgx"
+copy "%25KPPTempDir%25.plgx" "%25KPPDir%25$(ProjectName).plgx"
+if errorlevel 1 goto BuildEventFailed
+echo PLGX copied to KeePass plugins directory
+
+REM delete the temporary directory and its contents
+rmdir /S /Q "%25KPPTempDir%25"
+if errorlevel 1 goto BuildEventFailed
+echo Temporary directory deleted
+
+goto BuildEventOK
+
+
+:NotRelease
+echo Invalid configuration selected. Please choose a different build configuration
+echo or modify the post-build script to add support for this configuration.
+
+:BuildEventFailed
+echo POSTBUILDSTEP for $(ProjectName) FAILED
+exit 1
+
+:BuildEventOK
+echo POSTBUILDSTEP for $(ProjectName) COMPLETED OK
+</PostBuildEvent>
+  </PropertyGroup>
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
        Other similar extension points exist, see Microsoft.Common.targets.
   <Target Name="BeforeBuild">
@@ -113,24 +206,4 @@
   <Target Name="AfterBuild">
   </Target>
   -->
-  <PropertyGroup>
-    <PostBuildEvent>md "$(TargetDir)..\$(ProjectName)"
-del /s /q "$(TargetDir)..\$(ProjectName)"
-copy "$(ProjectDir)*.cs" "$(TargetDir)..\$(ProjectName)\*.*"
-copy "$(ProjectDir)*.csproj" "$(TargetDir)..\$(ProjectName)\*.*"
-
-md "$(TargetDir)..\$(ProjectName)\Properties" 
-xcopy "$(ProjectDir)Properties" "$(TargetDir)..\$(ProjectName)\Properties" /e
-
-"$(TargetDir)KeePass.exe" --plgx-create "$(ProjectDir)Build\$(ProjectName)"  --plgx-prereq-kp:2.10 --plgx-prereq-net:3.5
-
-md "$(TargetDir)..\$(ProjectName)\Build"
-move "$(TargetDir)..\$(ProjectName).plgx" "$(TargetDir)..\$(ProjectName)\Build\$(ProjectName).plgx"
-copy "$(TargetDir)\*.*" "$(TargetDir)..\$(ProjectName)\Build\*.*"
-del "$(TargetDir)..\$(ProjectName)\Build\*.dll"
-del "$(TargetDir)$(ProjectName).plgx"
-</PostBuildEvent>
-    <PreBuildEvent>
-    </PreBuildEvent>
-  </PropertyGroup>
 </Project>
