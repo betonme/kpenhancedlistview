@@ -56,7 +56,7 @@
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="KeePass">
-      <HintPath>..\..\..\..\..\..\Program Files (x86)\KeePass Password Safe 2\KeePass.exe</HintPath>
+      <HintPath>c:\Program Files (x86)\KeePass Password Safe 2\KeePass.exe</HintPath>
     </Reference>
     <Reference Include="System" />
     <Reference Include="System.Data" />
@@ -65,9 +65,20 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="AboutForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="AboutForm.Designer.cs">
+      <DependentUpon>AboutForm.cs</DependentUpon>
+    </Compile>
     <Compile Include="AddEntry.cs" />
     <Compile Include="InlineEditing.cs" />
     <Compile Include="OpenGroup.cs" />
+    <Compile Include="Properties\Resources.Designer.cs">
+      <AutoGen>True</AutoGen>
+      <DesignTime>True</DesignTime>
+      <DependentUpon>Resources.resx</DependentUpon>
+    </Compile>
     <Compile Include="SubPluginBase.cs" />
     <Compile Include="MultilineTextBox.cs">
       <SubType>Component</SubType>
@@ -104,6 +115,16 @@
     <EmbeddedResource Include="PaddedTextbox.resx">
       <DependentUpon>PaddedTextbox.cs</DependentUpon>
     </EmbeddedResource>
+    <EmbeddedResource Include="Properties\Resources.resx">
+      <Generator>ResXFileCodeGenerator</Generator>
+      <LastGenOutput>Resources.Designer.cs</LastGenOutput>
+    </EmbeddedResource>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\KeePass.ico" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\B16x16_Help.png" />
   </ItemGroup>
   <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
   <PropertyGroup>
@@ -153,6 +174,7 @@ rmdir /S /Q "%25KPPTempDir%25"
 mkdir "%25KPPTempDir%25"
 if errorlevel 1 goto BuildEventFailed
 echo Temporary directory created
+
 REM copy relevant project files to temporary directory
 copy "$(ProjectDir)*.sln" "%25KPPTempDir%25"
 if errorlevel 1 goto BuildEventFailed
@@ -163,7 +185,9 @@ if errorlevel 1 goto BuildEventFailed
 copy "$(ProjectDir)*.resx" "%25KPPTempDir%25"
 if errorlevel 1 goto BuildEventFailed
 mkdir "%25KPPTempDir%25\Properties"
-copy "$(ProjectDir)Properties\*.cs" "%25KPPTempDir%25\Properties"
+copy "$(ProjectDir)Properties\*.*" "%25KPPTempDir%25\Properties"
+mkdir "%25KPPTempDir%25\Resources"
+copy "$(ProjectDir)Resources\*.*" "%25KPPTempDir%25\Resources"
 if errorlevel 1 goto BuildEventFailed
 echo Files copied to temporary directory
 
@@ -180,7 +204,7 @@ if errorlevel 1 goto BuildEventFailed
 echo PLGX copied to KeePass plugins directory
 
 REM delete the temporary directory and its contents
-rmdir /S /Q "%25KPPTempDir%25"
+REM rmdir /S /Q "%25KPPTempDir%25"
 if errorlevel 1 goto BuildEventFailed
 echo Temporary directory deleted
 

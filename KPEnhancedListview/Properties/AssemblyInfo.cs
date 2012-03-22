@@ -23,7 +23,7 @@ using System.Runtime.InteropServices;
 
 // General assembly properties
 [assembly: AssemblyTitle("KPEnhancedListview")]
-[assembly: AssemblyDescription("Extend the KeePass Listview http://code.google.com/p/kpenhancedlistview")]
+[assembly: AssemblyDescription("Extend the KeePass Listview")]
 [assembly: AssemblyConfiguration("")]
 [assembly: AssemblyCompany("Frank Glaser")]
 [assembly: AssemblyProduct("KeePass Plugin")]
@@ -39,4 +39,4 @@ using System.Runtime.InteropServices;
 
 // Assembly version information
 [assembly: AssemblyVersion("2.1.8.*")]
-[assembly: AssemblyFileVersion("0.9.2.0")]
+[assembly: AssemblyFileVersion("0.9.2.1")]
