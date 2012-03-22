@@ -128,6 +128,16 @@ namespace KPEnhancedListview
             KPELAddEntry = new KPEnhancedListviewAddEntry();
             KPELOpenDirecotory = new KPEnhancedListviewOpenGroup();
             
+            // Add About dialog
+
+            // Add About dialog
+            ToolStripMenuItem m_tbItem = null;
+            m_tbItem = new ToolStripMenuItem();
+            m_tbItem.Text = "About";
+            m_tbItem.Image = Properties.Resources.B16x16_Help;
+            m_tbItem.Click += OpenAbout;
+            m_tsPopup.DropDownItems.Add(m_tbItem);
+
             return true; // Initialization successful
         }
 
@@ -159,6 +169,12 @@ namespace KPEnhancedListview
         public override string UpdateUrl
         {
             get { return "http://kpenhancedlistview.googlecode.com/svn/trunk/KPEnhancedListview/VersionInformation.txt"; }
+        }
+
+        private void OpenAbout(object sender, EventArgs e)
+        {
+            AboutForm abf = new AboutForm();
+            UIUtil.ShowDialogAndDestroy(abf);
         }
     }
 }
