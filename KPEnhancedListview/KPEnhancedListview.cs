@@ -82,6 +82,7 @@ namespace KPEnhancedListview
         public static KPEnhancedListviewInlineEditing KPELInlineEditing = null;
         public static KPEnhancedListviewAddEntry KPELAddEntry = null;
         public static KPEnhancedListviewOpenGroup KPELOpenDirecotory = null;
+		public static KPEnhancedListviewEditableNotes KPELEditableNotes = null;
 
         /// <summary>
         /// The <c>Initialize</c> function is called by KeePass when
@@ -127,6 +128,7 @@ namespace KPEnhancedListview
             KPELInlineEditing = new KPEnhancedListviewInlineEditing();
             KPELAddEntry = new KPEnhancedListviewAddEntry();
             KPELOpenDirecotory = new KPEnhancedListviewOpenGroup();
+			KPELEditableNotes = new KPEnhancedListviewEditableNotes(); 
             
             // Add About dialog
 

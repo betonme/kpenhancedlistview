@@ -72,6 +72,7 @@
       <DependentUpon>AboutForm.cs</DependentUpon>
     </Compile>
     <Compile Include="AddEntry.cs" />
+    <Compile Include="EditableNotes.cs" />
     <Compile Include="InlineEditing.cs" />
     <Compile Include="OpenGroup.cs" />
     <Compile Include="Properties\Resources.Designer.cs">
@@ -121,10 +122,16 @@
     </EmbeddedResource>
   </ItemGroup>
   <ItemGroup>
+    <None Include="Build\Release\KPEnhancedListview.plgx" />
+    <None Include="Homepage.URL" />
     <None Include="Resources\KeePass.ico" />
   </ItemGroup>
   <ItemGroup>
     <None Include="Resources\B16x16_Help.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Content Include="Build\Release\KPEnhancedListview.dll" />
+    <Content Include="VersionInformation.txt" />
   </ItemGroup>
   <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
   <PropertyGroup>
