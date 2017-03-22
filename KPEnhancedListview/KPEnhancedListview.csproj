@@ -144,6 +144,7 @@ REM no relative path for create plgx
 REM set KPPTempDir=%25KPPDir%25$(ProjectName)
 set KPPTempDir=$(ProjectDir)Build\$(ConfigurationName)\$(ProjectName)
 
+mkdir "%25KPPDir%25"
 IF NOT "$(ConfigurationName)"=="Debug" Goto :NotDebug
 REM In debug mode we want to move the generated DLLs and PDBs to the plugins
 REM directory so we can easily set breakpoints, etc.
