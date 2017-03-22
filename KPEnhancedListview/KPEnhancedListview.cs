@@ -170,7 +170,7 @@ namespace KPEnhancedListview
 
         public override string UpdateUrl
         {
-            get { return "http://kpenhancedlistview.googlecode.com/svn/trunk/KPEnhancedListview/VersionInformation.txt"; }
+            get { return "https://raw.githubusercontent.com/betonme/kpenhancedlistview/master/KPEnhancedListview/VersionInformation.txt"; }
         }
 
         private void OpenAbout(object sender, EventArgs e)
