@@ -79,7 +79,7 @@
             this.m_linkHomepage.Size = new System.Drawing.Size(147, 13);
             this.m_linkHomepage.TabIndex = 4;
             this.m_linkHomepage.TabStop = true;
-            this.m_linkHomepage.Text = "Google Code Project Website";
+            this.m_linkHomepage.Text = "Github Repository";
             this.m_linkHomepage.LinkClicked += new System.Windows.Forms.LinkLabelLinkClickedEventHandler(this.OnLinkHomepage);
             // 
             // m_linkDonate
