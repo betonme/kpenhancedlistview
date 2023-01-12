@@ -1,0 +1,5 @@
+# Visual Studio Files
+.vs/
+
+# Unzip the KeePass portable into a directory above the project named KeePass
+KeePass/
