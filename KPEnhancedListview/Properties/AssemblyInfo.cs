@@ -1,7 +1,7 @@
 ﻿/*
     KPEnhancedListview - Extend the KeePass Listview for inline editing.
     Copyright (C) 2010 - 2012  Frank Glaser  <glaserfrank(at)gmail.com>
-    http://code.google.com/p/kpenhancedlistview
+    https://github.com/betonme/kpenhancedlistview/
     
     KPEnhancedListview is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -38,5 +38,5 @@ using System.Runtime.InteropServices;
 [assembly: Guid("a65cdf78-739f-4e8b-ad14-92e9001d7eb1")]
 
 // Assembly version information
-[assembly: AssemblyVersion("2.1.8.*")]
+[assembly: AssemblyVersion("1.0.*")]
 [assembly: AssemblyFileVersion("1.0.0.0")]

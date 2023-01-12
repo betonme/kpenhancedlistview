@@ -1,7 +1,7 @@
 /*
     KPEnhancedListview - Extend the KeePass Listview for inline editing.
     Copyright (C) 2010 - 2012  Frank Glaser  <glaserfrank(at)gmail.com>
-    http://code.google.com/p/kpenhancedlistview
+    https://github.com/betonme/kpenhancedlistview/
     
     KPEnhancedListview is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by

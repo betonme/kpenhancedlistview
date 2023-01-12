@@ -69,7 +69,7 @@ namespace KPEnhancedListview
 
         private void OnLinkHomepage(object sender, LinkLabelLinkClickedEventArgs e)
         {
-            const string HomepageUrl = "http://code.google.com/p/kpenhancedlistview/";
+            const string HomepageUrl = "https://github.com/betonme/kpenhancedlistview/";
             WinUtil.OpenUrl(HomepageUrl, null);
             this.Close();
         }

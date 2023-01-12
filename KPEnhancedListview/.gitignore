@@ -1,0 +1,14 @@
+# Visual Studio Files
+obj/
+KPEnhancedListview.csproj.user
+
+# Unzip the KeePass portable into a directory above the project named KeePass
+KeePass/
+
+# Build artifacts
+Build/Release/KPEnhancedListview/
+Build/Release/KeePass.exe
+Build/Release/KeePass.exe.config
+Build/Release/KeePass.XmlSerializers.dll
+Build/Release/KPEnhancedListview.dll.config
+Build/Release/KPEnhancedListview.pdb
